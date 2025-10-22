@@ -4,7 +4,7 @@ from deep_translator import GoogleTranslator
 import time
 
 # 🔹 Base folder containing category subfolders
-BASE_DIR = r"C:\Users\STAR PC\Downloads\FYP\FYP\text_pdfs"
+BASE_DIR = r"C:\Users\Dell-5420\Downloads\fyp_github\fyp_text"
 
 def extract_text_from_pdf(pdf_path):
     """Extract text content from a PDF file using PyMuPDF."""
@@ -32,20 +32,16 @@ def translate_large_text(text, chunk_size=4000):
             time.sleep(2)
     return "\n".join(translated_chunks)
 
-# 🔸 Loop through each category folder
-for category in os.listdir(BASE_DIR):
-    category_path = os.path.join(BASE_DIR, category)
-    if not os.path.isdir(category_path):
-        continue
-
+# 🔸 Recursively go through all folders and process PDFs
+for root, dirs, files in os.walk(BASE_DIR):
+    category = os.path.basename(root)
     print(f"\n📂 Processing category: {category}")
 
-    # Loop through PDF files in each category
-    for file_name in os.listdir(category_path):
+    for file_name in files:
         if not file_name.lower().endswith(".pdf"):
             continue
 
-        pdf_path = os.path.join(category_path, file_name)
+        pdf_path = os.path.join(root, file_name)
         urdu_txt_path = os.path.splitext(pdf_path)[0] + "_urdu.txt"
 
         # Skip if already translated
