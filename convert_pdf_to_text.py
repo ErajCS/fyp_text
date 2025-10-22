@@ -1,6 +1,6 @@
 import os
 import fitz  # PyMuPDF
-
+#hello hira
 # Path to your main folder
 BASE_DIR = r"C:\Users\STAR PC\Downloads\FYP\FYP\text_pdfs"
 
