@@ -1,8 +1,10 @@
 import os
 import fitz  # PyMuPDF
-#hello hira
+
 # Path to your main folder
+
 BASE_DIR = r"C:\Users\Dell-5420\Downloads\fyp_github\fyp_text"
+
 
 for root, dirs, files in os.walk(BASE_DIR):
     for file in files:

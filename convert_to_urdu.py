@@ -4,6 +4,7 @@ from deep_translator import GoogleTranslator
 import time
 
 # 🔹 Base folder containing category subfolders
+
 BASE_DIR = r"C:\Users\Dell-5420\Downloads\fyp_github\fyp_text"
 
 def extract_text_from_pdf(pdf_path):
