@@ -4,16 +4,23 @@ import numpy as np
 import faiss
 import json
 import glob
+from datetime import datetime
+from urllib.parse import quote  # safely encode URLs
 
 # --- Paths ---
 MERGED_DIR = "embeddings_output/merged"
 FAISS_DIR = "faiss_indexes"
+DOCUMENTS_DIR = "text_pdfs"  # where PDFs are stored
 os.makedirs(FAISS_DIR, exist_ok=True)
+
+# --- Base URL where PDFs are hosted ---
+BASE_URL = "https://yourdomain.com/pdfs"
+
 
 def build_faiss_for_language(lang):
     print(f"\n🚀 Building FAISS index for {lang.capitalize()}...")
 
-    # --- Automatically find the merged CSV and NPY files ---
+    # --- Find merged files automatically ---
     csv_files = glob.glob(os.path.join(MERGED_DIR, f"{lang}_embeddings_*.csv"))
     npy_files = glob.glob(os.path.join(MERGED_DIR, f"{lang}_vectors_*.npy"))
 
@@ -21,40 +28,59 @@ def build_faiss_for_language(lang):
         print(f"❌ No files found for {lang}. Check your merged folder.")
         return
 
-    csv_path = csv_files[0]  # pick the first match
+    csv_path = csv_files[0]
     npy_path = npy_files[0]
 
     # --- Load data ---
     df = pd.read_csv(csv_path, encoding="utf-8-sig")
     vectors = np.load(npy_path).astype('float32')
-
-    # --- Ensure array is C-contiguous (FAISS requirement) ---
     vectors = np.ascontiguousarray(vectors)
+    faiss.normalize_L2(vectors)  # cosine similarity
 
-    # --- Normalize for cosine similarity ---
-    faiss.normalize_L2(vectors)
-
-    # --- Create FAISS index ---
+    # --- Create and save FAISS index ---
     dim = vectors.shape[1]
-    index = faiss.IndexFlatIP(dim)  # Inner product = cosine similarity
+    index = faiss.IndexFlatIP(dim)
     index.add(vectors)
 
-    # --- Save index ---
     index_path = os.path.join(FAISS_DIR, f"{lang}_faiss.index")
     faiss.write_index(index, index_path)
     print(f"✅ Saved FAISS index → {index_path}")
 
-    # --- Create JSON metadata file ---
+    # --- Create metadata JSON ---
     metadata = []
+    current_time = datetime.utcnow().isoformat() + "Z"
+
+    # Base PDF folder for each language
+    pdf_base_url = BASE_URL if lang == "english" else f"{BASE_URL}/urdu_pdfs"
+
     for i, row in df.iterrows():
-        metadata.append({
+        filename = row.get("filename", "")
+
+        # --- Convert .txt → .pdf properly ---
+        if lang == "urdu":
+            pdf_name = filename.replace("_urdu.txt", "_urdu.pdf")
+        else:
+            pdf_name = filename.replace(".txt", ".pdf")
+
+        # --- Encode filename for valid URL ---
+        pdf_url = f"{pdf_base_url}/{quote(pdf_name)}"
+
+        record = {
             "id": int(i),
             "category": row.get("category", ""),
-            "filename": row.get("filename", ""),
-            "chunk_id": row.get("chunk_id", ""),
-            "text": row.get("text", "")
-        })
+            "language": lang,
+            "filename": pdf_name,
+            "chunk_id": int(row.get("chunk_id", i)),
+            "text": row.get("text", ""),
+            "source_path": pdf_url,  # ✅ link to actual PDF
+            "metadata": {
+                "created_at": current_time,
+                "source_type": "pdf"
+            }
+        }
+        metadata.append(record)
 
+    # --- Save metadata JSON ---
     json_path = os.path.join(FAISS_DIR, f"{lang}_metadata.json")
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(metadata, f, ensure_ascii=False, indent=2)
@@ -67,4 +93,4 @@ def build_faiss_for_language(lang):
 build_faiss_for_language("english")
 build_faiss_for_language("urdu")
 
-print("\n🎉 FAISS indices + metadata JSON files created successfully!")
+print("\n🎉 FAISS indices + clean metadata JSON files with proper PDF URLs created successfully!")
