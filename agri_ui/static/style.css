@@ -207,3 +207,20 @@ h1 {
     h1 { font-size: 36px; }
     .chat-bubble { max-width: 90%; }
 }
+
+body.dark {
+    background: #0f172a;
+    color: white;
+}
+
+.dark .main-card {
+    background: #020617;
+    color: white;
+}
+
+.theme-btn {
+    padding: 8px 15px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+}

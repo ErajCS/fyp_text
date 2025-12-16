@@ -9,7 +9,7 @@
     <!-- Link to External CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
+<body class="{% if user and user.dark_mode %}dark{% endif %}">
 
     <div class="main-card">
         <header>
@@ -18,12 +18,12 @@
             </div>
             <nav>
                 <ul>
-                    <li><a href="#" class="active">Home</a></li>
-                    <li><a href="#">About Us</a></li>
-                    <li><a href="#">Resources</a></li>
-                    <li><a href="#">Contact Us</a></li>
+                    <li><a href="/dashboard">Dashboard</a></li>
+                    <li><a href="/chatbot" class="active">AgriChat</a></li>
+                    <li><a href="/">Logout</a></li>
                 </ul>
             </nav>
+
         </header>
 
         <h1>Welcome to AgriChat</h1>

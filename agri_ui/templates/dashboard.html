@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard | AgriChat</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="{% if user and user.dark_mode %}dark{% endif %}">
+
+<div class="main-card">
+
+    <header>
+        <div class="logo">
+            🌱 AgriChat Dashboard
+        </div>
+        <nav>
+            <ul>
+                <li><a href="/dashboard" class="active">Dashboard</a></li>
+                <li><a href="/chatbot">AgriChat</a></li>
+                <li><a href="/">Logout</a></li>
+            </ul>
+            <a href="/toggle_theme">
+                <button class="theme-btn">
+                    {% if user.dark_mode %}Light Mode{% else %}Dark Mode{% endif %}
+                </button>
+            </a>
+
+        </nav>
+    </header>
+
+    <h1>Welcome to Your Dashboard</h1>
+
+    <div class="quick-actions">
+        
+        <div class="action-item" onclick="location.href='/chatbot'">
+            <div class="icon-circle">💬</div>
+            <span class="action-label">Open Chatbot</span>
+        </div>
+
+        <div class="action-item">
+            <div class="icon-circle">🌾</div>
+            <span class="action-label">Crop Advice</span>
+        </div>
+
+        <div class="action-item">
+            <div class="icon-circle">💧</div>
+            <span class="action-label">Irrigation</span>
+        </div>
+
+        <div class="action-item">
+            <div class="icon-circle">🌦</div>
+            <span class="action-label">Weather</span>
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
