@@ -1,0 +1,407 @@
+science
+The
+of
+natural
+PONKO
+PQNK Foundational Document: Topic 10
+Creating On-Farm "Micro-Water Cycles": Landscape
+Design to Maximize Rain, Dew, and Humidity Capture
+at the Microclimate Level
+micro-water
+cycle
+science
+of
+natural
+PONKO
+farming
+1 of 6
+farming
+1. Introduction: Restoring the Cycle, the PQNK Way
+For millennia, since the domestication of draft animals, tillage-based agriculture has
+progressively fractured the local water cycle by disrupting soil structure, removing organic
+cover, and impairing the natural mechanisms that capture and recycle atmospheric moisture.
+This long-standing practice has led to a deep and unsustainable dependency on irrigation,
+widespread aquifer depletion, and increased vulnerability to drought.
+PQNK-Paedar Qudratti Nizam Kashtqari (pronounced "picnic")—is the regenerative and
+sustainable pristine organic farming system. It is a closed-loop framework that restores
+nature's hydrological intelligence at the field level. This paper details how, through proper
+landscape design and management, a PQNK farm creates a resilient on-farm micro-water
+cycle that meets crop water needs entirely from natural precipitation, dew, and humidity—
+eliminating the need for irrigation.
+2. Core Principle: The Natural Water Buffer is Sufficient
+As outlined in Uncovering the Secrets of Natural Water Supply Systems, nature provides all
+the water necessary for resilient plant growth through:
+Rainfall as the primary source.
+Dew as a daily supplementary source.
+Humidity as a reservoir that reduces plant transpiration and feeds organic mulch.
+Soil infiltration, capillary action, and biological networks for distribution and storage.
+PQNK does not seek to add complex external technology to this system. Instead, it removes
+the obstacles imposed by industrial farming-especially tillage and bare soil-thereby
+allowing these natural mechanisms to function at their full capacity. The data proves that
+when this is done, rainfall alone is more than sufficient.
+3. The PQNK Method: How the Micro-Water Cycle is Established
+3.1. The Absolute Foundation: Breaking Hardpan & Contour Design
+Deep Soil Liberation: The first non-negotiable step is the complete breakdown of
+soil hardpan. This allows every drop of rainwater to infiltrate instantly where it falls,
+ending runoff and enabling deep recharge.
+Contour-Aligned Systems: All beds, mulched zones, and plantings follow the
+natural contour. This transforms the entire farm into a series of level, water-
+harvesting terraces, ensuring zero water loss from the field.
+3.2. Organic Mulch: The Universal Moisture Engine
+PQNK recognizes crop-residue-based organic mulch as the single most important
+technology for water cycling.
+Rain Capture: A thick mulch layer eliminates evaporation, ensuring 100% of
+infiltrated rain is preserved in the soil profile.
+Dew & Humidity Harvesting: The mulch acts as a hygroscopic buffer. During
+nights and periods of high humidity, moisture from the air condenses on and is
+2 of 6
+absorbed by the mulch, which then releases it to the soil and plant roots. No special
+materials or surfaces are needed—the diverse organic matter provided by the system
+itself is perfectly designed for this function.
+The Result: As the attached tables demonstrate, this mulch-based Soil Moisture
+Management (SMM) system reduces crop water demand from conventional irrigation
+by 80-92% (see Table: Water use efficiency on PQNK).
+3.3. Re-Evaluating "High-Water" Crops: The Data-Driven Reality
+The attached comparative analyses reveal a paradigm-shifting truth:
+For Sugarcane (PQNK vs. Conventional):
+Water use per kg of crop: 26 liters vs. 206 liters (88% reduction).
+Water use per kg of sugar produced: 156 liters vs. 2,284 liters (93% reduction).
+For Rice (PQNK vs. Conventional):
+Water use per kg of crop: 321 liters vs. 4,699 liters (93% reduction).
+Water use by Sugarcane crop when on PQNK vs Conventional - Realistic
+Sugarcane
+Production Process Production
+Kg/Ac
+Sugarcane
+Production
+Mounds/Ac
+Sugar
+Recovery
+Sugar
+Water used
+Recovery in
+Recovery in
+in crop life
+Water use
+by crop
+by %age
+Kg per Acre
+Liters
+weight
+Water used
+by Kg of
+sugar
+Percent of
+water used
+PQNK
+Conventional
+48,000
+32,000
+1,200
+11%
+5,280
+822,321
+17
+156
+7%
+800
+9%
+2,880
+6,579,200
+206
+2,284
+100%
+Note: Average yield & sugar content increase by PQNK is considered in this comparison.
+Water use by Rice crop when on PQNK vs Conventional
+Rice Production Rice Production
+Production Process
+Kg/Ac
+Mounds/Ac
+Water used in
+crop life Liters
+Water used by
+Kg of Rice
+Percent of
+water used
+PQNK
+Conventional
+1,600
+1,400
+40
+513,950
+321
+7%
+35
+6,579,200
+4,699
+100%
+Note: Average yield of rice by PQNK is considered in this comparison.
+Critical Insight: Rice, often maligned as a "water-guzzler," is naturally a low-water crop
+when grown within its correct ecological context—the monsoon season. High humidity
+drastically reduces transpiration, and its narrow leaves are inherently water-efficient. The
+extreme water use in conventional systems is an artifact of flooding and evaporation on
+bare, poorly managed soils, not a plant requirement.
+3.4. The Rainfall Sufficiency Principle
+The attached rainwater calculator shows that in the Punjab region (with a conservative
+annual average of 400 mm rainfall), one acre receives over 2.5 million liters of rainwater
+annually.
+The crop water requirement tables under PQNK's SMM system show that even the most
+water-demanding crops in the cycle use less than 850,000 liters per acre annually.
+3 of 6
+Therefore, 400 mm of rainfall provides approximately three times the water needed by
+every crop in the system. The challenge solved by PQNK is not water scarcity, but water
+mismanagement. By capturing, infiltrating, and storing this rainfall via mulch and proper
+soil design, irrigation becomes redundant.
+Rain water calculator
+Volume of rainfall: amount of rain & area
+Catchment area
+Acres
+Month/Year
+Calculator
+2020
+Rainfall height
+(MM)
+Result: Water in
+volume (Lit.)
+4,047
+2,543,452
+628.5
+https://www.weather-pk.com/en/pakistan/lahore-weather-august#climate_text_1
+Rainwater used by crop under Soil Moisture
+Management (SMM)
+Soil Moisture Management (SMM) Mulch
+covered Raised Bed
+Rainfall lit % of rain water
+2,543,452
+Crop
+Water
+Crop life Liters
+used by crop
+Wheat
+308,370
+2,235,081
+14%
+Cotton
+513,950
+2,029,501
+25%
+Corn Autumn
+308,370
+2,235,081
+14%
+Corn Spring
+411,160 2,132,291
+19%
+Potato
+308,370 2,235,081
+14%
+Sugarcane
+Rice
+822,321 1,721,131
+48%
+513,950 2,029,501
+25%
+Absorption of dew
+and humidity from
+air by the organic
+mulch supplement
+requirements
+od. Cihor Production & Fuel Altornatos
+Crop Water used under conventional flood irrigation vs Soil Moisture Management (SMM)
+Crop Water Requirement Flood
+Crop
+Water Req.
+Acre
+Inches
+Irrigation
+Cubic
+Meters
+Liters
+Avg. crop yield and Lit of
+water used per Kg of the crop
+Avg. Yield Kg Liters of water
+per Acre
+per Kg crop
+Soil Moisture Management (SMM) Mulch covered Raised Bed
+Irrigations
+Liters per
+Irrigation
+Crop life
+Liters
+Liters of water
+per Kg crop
+Percent of
+water used
+Wheat
+16.00
+Cotton
+22.00
+1,645 1,644,800
+2,262 2,261,600
+1,400
+1,175
+102,790
+308,370
+220
+19%
+800
+2,827
+102,790
+513,950
+642
+23%
+Corn Autumn
+13.00
+1,336
+1,336,400
+2,400
+557
+102,790
+308,370
+128
+23%
+Corn Spring
+20.00
+2,056 2,056,000
+3,200
+643
+102,790
+411,160
+128
+20%
+Potato
+13.00
+1,336 1,336,400
+12,000
+111
+102,790
+308,370
+26
+23%
+Sugarcane
+64.00
+Rice
+64.00
+6,579
+6,579
+6,579,200
+6,579,200
+32,000
+206
+102,790
+822,321
+26
+12%
+1,400
+4,699
+102,790
+513,950
+367
+8%
+Legend
+10"
+1 Acre Inch =
+102.80 Cubic Meters
+1. Flood irrigation
+2.Furrow irrigation
+1 Acre Inch =
+102,800
+Liters
+6"
+Furrows Length in Inches
+104,544
+8,712
+60
+Cubic In of water Lit per Irrigation
+6,272,640
+102,790
+Cubic Inch
+Liters
+PEDAVER
+Transition from Irrigation regimen to
+Soil Moisture Management (SMM)
+3. Sprinkler and drip irrigation
+4. Raised bed irrigation
+5. Soil Moisture Management-SMM
+oil Moisture Managemen - SMM
+Periodical
+irrigations
+Ecosystem
+0.01638705
+Furrows Length in Feet
+This is hypothetical calculation. Rain & Dew water absorption and increase in the yield is not taken into account
+In all cases crop plants use same amount of water. Water saving comes from reduction in evaporation losses
+4. System Integration: The Closed-Loop Water Economy in
+Practice
+A functioning PQNK farm integrates these elements into a self-sustaining
+hydrological loop:
+1. Rainfall is fully captured via contour design and infiltrated into hardpan-free soil.
+4 of 6
+2. Organic Mulch eliminates evaporation, harvests dew and humidity, and regulates
+3.
+soil temperature and moisture release.
+Soil Biology Autonomously Revitalizes:
+PQNK does not require artificial inoculation.
+By eliminating tillage and chemicals, and by
+providing constant organic matter, a pristine
+soil ecosystem re-establishes itself.
+Mycorrhizal networks, bacteria, and fungi
+proliferate naturally, creating a "living water
+web" that distributes
+moisture and nutrients
+with supreme
+efficiency.
+4. The Microclimate
+Shifts: The combined
+effect of vegetation
+layers and moist soil
+creates a cooler, more
+humid
+field
+atmosphere. This
+further suppresses evaporation, enhances dew
+formation, and buffers plants against dry winds.
+viva X100 | ZEISS
+12/19/2025, 08:28
+The outcome is a farm-scale water surplus, where the
+property meets all its needs from its own micro-water cycle.
+5. The Empirical Proof: Beyond Theory
+This document is not a proposal. It is a report from the field. We have a large and growing
+number of PQNK farmers who, for several years, have been producing abundant yields of
+citrus, peaches, mango, guava without irrigation, and banana, wheat, cotton, sugarcane, rice,
+and other crops with at least 80% reduced irrigation. It is well established that all crops can
+be grown without irrigation. Farmers are gradually coming out of the irrigation mindset.
+Their success is rooted in the exact principles and calculations presented here.
+6. Conclusion: The End of Irrigation Dependency
+Topic 10 establishes that the global water crisis in agriculture is a crisis of design and
+management, not of supply. The PQNK system demonstrates that by:
+Breaking hardpan,
+Farming on contour,
+Permanently covering soil with organic mulch from crop residues,
+And aligning crops with their natural seasonal humidity,
+5 of 6
+a farm can become hydrologically self-sufficient. The data proves that natural precipitation,
+enhanced by dew and humidity capture, is more than adequate for high-yield, high-quality
+production.
+The goal of PQNK is not to make irrigation more efficient, but to make it obsolete for staple
+food production. By restoring the pristine, closed-loop water cycle of natural ecosystems,
+we create farms that are resilient, productive, and fundamentally in harmony with the
+climate.
+References & Data Tables (Integrated from Attachments):
+Water Use Efficiency on PQNK: Comparison of Flood Irrigation vs. Soil Moisture
+Management (SMM)
+Comparative Water Use: PQNK vs. Conventional for Sugarcane and Rice
+Rainwater Calculator and Crop Utilization of Rainfall under SMM
+PQNK Foundational Documents: Topics 1-9 on Soil Liberation, Mulch, and
+Contour Design
+PQNK – Farming in Harmony with Nature's Logic. Proof in Practice.
+Footnote: Any Production Process That Inundates Soil With Water, Disturbs Soil
+Through Tillage, Or Leaves Soil Bare Without Organic Mulch Cover Does Not
+Qualify As Natural Ecosystem Science For Production Agriculture.
+PQNK, to be pronounced as 'picnic', which stands for Paedar Qudratti Nizam Kashatqari,
+and means: the regenerative & sustainable Pristine Organic Farming System.
+www.Facebook.Com/Pedaver
+https://www.youtube.com/@pedaverpqnk3167/videos
+pedaver@gmail.com
+WhatsApp +92 320 677 6666
+6 of 6

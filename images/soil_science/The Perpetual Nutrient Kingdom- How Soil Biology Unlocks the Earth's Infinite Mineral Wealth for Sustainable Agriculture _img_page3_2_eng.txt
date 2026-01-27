@@ -1,0 +1,17 @@
+The image is a table titled "The Evidence of Abundance - Soil vs. Crustal Composition (Median values, mg/kg or ppm)." It presents a comparative analysis of the concentration of various chemical elements found in soil versus their average concentrations in the Earth's crust.
+
+### Description:
+The table has several columns:
+1. **Element** - Lists the chemical elements being analyzed.
+2. **Sparks (2003) Median Soil Value** - Provides the median concentration values for these elements in soil, as reported by Sparks in 2003.
+3. **Earth's Crust Average** - Shows the average concentration of these elements in the Earth's crust.
+4. **Primary Geological Form (The "Bank")** - Indicates the primary minerals or geological forms associated with each element.
+
+### Summary of Key Elements:
+- **Oxygen (O)**: 490,000 in soil, 474,000 in the crust; predominantly found in oxide minerals.
+- **Silicon (Si)**: 330,000 in soil, 277,000 in the crust; associated with silicate minerals like quartz.
+- **Iron (Fe)**: 40,000 in soil, 41,000 in the crust; found in minerals such as hematite and magnetite.
+- Other elements such as calcium, potassium, and nitrogen show varying concentrations, with nitrogen being significantly less abundant in the crust compared to soil.
+
+### Purpose:
+The purpose of this image is to highlight the differences in the abundance of various elements in soil compared to the Earth's crust. It serves as a reference for understanding soil composition, which is essential for various fields such as agriculture, geology, and environmental science. The data presented can help in assessing nutrient availability in soils, as well as understanding the geological processes that contribute to soil formation and composition.

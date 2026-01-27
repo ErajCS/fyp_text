@@ -1,0 +1,24 @@
+The image presents a visually structured 24-month timeline dedicated to soil restoration. It features a progression of tasks and checkpoints aimed at returning soil to a healthy state after disruptive events, potentially due to environmental damage or mismanagement.
+
+### Visual Elements:
+- **Sections**: The timeline is divided into four main phases:
+  1. **Emergency Declaration**
+  2. **Subsoiling Operations**
+  3. **Cover Crop Establishment**
+  4. **Restored Landscapes**
+
+- **Graphics**: Each section showcases relevant illustrations:
+  - **Emergency Declaration**: A figure in a jacket labeled "Emergency Management" stands adjacent to an official vehicle with a "Road Closed" sign, indicating the initial assessment and immediate response.
+  - **Subsoiling Operations**: A tractor is depicted engaging in subsoiling activities, generally aimed at improving soil structure and drainage.
+  - **Cover Crop Establishment**: This section shows a thriving field with diverse vegetation, suggesting the implementation of cover crops to enhance soil health.
+  - **Restored Landscapes**: The final part illustrates an expansive field with rows of healthy crops, symbolizing the successful restoration of the land.
+
+### Text Summary:
+- Each phase has brief text descriptions:
+  - **Emergency Declaration**: Involves mapping and equipment deployment, highlighted as being 100% complete.
+  - **Subsoiling Operations**: Focuses on the creation of permanent raised beds and no-till planting, currently at 75%.
+  - **Cover Crop Establishment**: Emphasizes monitoring networks, with this phase at 50%.
+  - **Restored Landscapes**: Discusses achieving healthy water infiltration, marked as 25% through the timeline.
+
+### Purpose:
+The purpose of the image is to outline a strategic approach to soil restoration over a two-year period, highlighting key processes and their respective completion stages. This timeline serves as a guide for stakeholders involved in land management, agriculture, and environmental recovery, promoting awareness and understanding of the steps necessary for restoring soil health.

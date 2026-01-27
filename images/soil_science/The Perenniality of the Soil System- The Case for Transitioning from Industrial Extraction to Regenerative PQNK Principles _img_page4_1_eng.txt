@@ -1,0 +1,16 @@
+The image presents a comparative analysis of two contrasting systems: a "Broken System" represented by ACI (Sabotaged Design) and a "Functional System" represented by PQNK (Perennial Design). 
+
+### Description:
+- **Title**: The title at the top states, "Comparative Analysis: A Broken System vs. A Functional One."
+- **Columns**: The table consists of two main columns, one for each type of system, detailing different design principles.
+- **Rows**: The rows highlight various aspects of the systems, including:
+  - **Design Principle**: ACI contrasts with PQNK.
+  - **Production Basis**: Linear Extraction for ACI vs. Cyclical Regeneration for PQNK.
+  - **Energy Source**: Finite Fossil Fuels versus Infinite Solar Power.
+  - **Water Dynamics**: Destructive methods in ACI compared to Constructive methods in PQNK.
+  - **Nutrient Source**: Finite Synthetic Inputs versus Infinite Biological Cycling.
+  - **System Health**: Degenerative versus Regenerative characteristics.
+  - **Long-Term Yield**: Diminishing for ACI compared to Sustaining & Increasing for PQNK.
+
+### Purpose:
+The purpose of the image is to visually outline and contrast the characteristics and outcomes of two different design philosophies regarding sustainability and ecological systems. It serves as an educational tool, emphasizing how the choice of system—either broken or functional—affects environmental health, resource sustainability, and overall system longevity.

@@ -1,0 +1,22 @@
+The image titled "Rethinking Agricultural Systems: The PQNK Framework" presents a visual comparison between two agricultural paradigms: the "Broken Linear System" and the "Closed-Loop Ecosystem."
+
+### Details of the Image
+
+- **Left Side (The Broken Linear System):**
+  - **Visual Elements:**
+    - Illustrations depict a tractor engaged in tillage, representing traditional farming practices.
+    - Icons for external inputs like fertilizers and pesticides are shown.
+    - A fragile crop and signs of runoff and waste are indicated, highlighting the negative impacts of this system.
+  - **Text Summary:**
+    - This section discusses the inefficiencies and environmental issues caused by conventional farming, termed as the "anti-ecosystem model." It emphasizes the reliance on external inputs and the resulting problems, including poor crop resilience and environmental degradation.
+
+- **Right Side (The Closed-Loop Ecosystem):**
+  - **Visual Elements:**
+    - It features a circular flow diagram showing a more sustainable approach, centered on building a healthy soil ecosystem.
+    - Various steps in the closed-loop process include harvesting, recycling biomass, and correcting soil chemistry.
+  - **Text Summary:**
+    - The section presents the "PQNK Framework," outlining principles (the four PQNK axioms) that emphasize the transition from traditional input management to a more regenerative and sustainable approach. It illustrates the importance of nurturing ecosystem functions and restoring soil health.
+
+### Purpose of the Image
+
+The image aims to educate viewers about the limitations of conventional agriculture and promotes the PQNK Framework as a transformative solution. By visually contrasting two models, it encourages a shift in perspective towards sustainable farming practices that prioritize ecosystem health, soil restoration, and regenerative principles. The graphic serves as a tool for farmers, educators, and advocates in understanding and implementing the new paradigm in agricultural systems.

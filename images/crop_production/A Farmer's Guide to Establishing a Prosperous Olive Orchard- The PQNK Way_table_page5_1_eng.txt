@@ -1,0 +1,17 @@
+The image presents a structured table that outlines the growth stages of fruit trees, providing information on their age, expected fruit yield, and key management focuses. 
+
+### Description:
+- **Columns:**
+  - **Tree Age (Years):** The age of the tree categorized into four ranges (1-2, 3-4, 5-7, 8-15+).
+  - **Growth Stage:** The developmental phase the tree is in, including "Establishment," "First Production," "Increasing Yield," and "Sustained High Production."
+  - **Expected Fruit Yield per Tree (Kg):** The estimated amount of fruit the tree is expected to generate at each growth stage, ranging from 0-5 kg to 45-60+ kg.
+  - **Key Management Focus:** Recommendations on practices to support tree health and productivity, such as system integration, canopy management, and pruning strategies.
+
+### Summary of Text:
+1. **1-2 Years (Establishment):** Trees yield 0-5 kg. Emphasis on integrating systems and formative training to develop strong roots and branches.
+2. **3-4 Years (First Production):** Expected yield of 10-20 kg. Focus on canopy management to promote growth and fruiting.
+3. **5-7 Years (Increasing Yield):** Trees produce 25-40 kg. The emphasis is on sustaining high-quality fruit production through optimal pruning.
+4. **8-15+ Years (Sustained High Production):** Yield is 45-60+ kg. Management is minimal, focusing on efficient harvesting and maintaining canopy health.
+
+### Purpose:
+The purpose of this image is to serve as a guide for fruit tree management, detailing the expected progress of tree development, fruit production capabilities, and the necessary care at each stage to maximize yields and maintain tree health. This information is particularly useful for farmers, horticulturists, and agricultural educators in managing fruit production effectively.

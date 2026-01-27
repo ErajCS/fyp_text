@@ -1,0 +1,13 @@
+The image compares two irrigation methods: the flood system and furrow irrigation. 
+
+### Description
+- **Visual Elements**: The image is divided into two sections. On the left side, it depicts a flood irrigation setup, showing large amounts of water covering the ground and plants. On the right side, furrow irrigation is illustrated, where water is directed along the furrows between rows of crops.
+- **Color Scheme**: Bright and vibrant colors are used to emphasize the plants and water, creating a clear and inviting visual representation.
+
+### Text Summary
+- At the top, there is a leaf icon, which adds a natural theme.
+- The main text reads: "IF WE WATER IN FURROWS INSTEAD OF USING THE FLOOD SYSTEM, WE CAN SAVE 40% TO 60% OF WATER AND ALSO IMPROVE THE HEALTH OF THE SOIL."
+- There are labels for each irrigation method: "FLOOD SYSTEM" on the left and "FURROW IRRIGATION" on the right.
+
+### Purpose
+The purpose of the image is to educate viewers about the benefits of furrow irrigation over traditional flood irrigation. It aims to promote water conservation and soil health, highlighting the significant water savings that can be achieved by adopting furrow irrigation techniques. The overall message encourages sustainable agricultural practices.

@@ -1,0 +1,14 @@
+The image compares two methods of irrigation: Drip Irrigation and Furrow Irrigation. 
+
+**Left Side (Drip Irrigation):**
+- Depicts a system where water is released drop by drop from a nozzle.
+- The illustration shows water spreading outwards in a circular pattern from the point of application, with arrows indicating the direction of water movement.
+- The accompanying text states, "Drip Irrigation: Water spreads via capillarity," suggesting that the water diffuses into the surrounding soil through capillary action.
+
+**Right Side (Furrow Irrigation):**
+- Illustrates a furrow or channel filled with water.
+- The design conveys how water moves sideways in the soil.
+- The text reads, "Furrow Irrigation: Capillarity pulls water sideways," indicating that the design of the furrow helps facilitate lateral movement of water through capillary action.
+
+**Purpose of the Image:**
+The image serves an educational purpose, illustrating the differences between drip irrigation and furrow irrigation. It aims to inform viewers about the mechanisms of water distribution in both systems and their reliance on capillarity for effective irrigation practices in agriculture.

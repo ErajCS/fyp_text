@@ -1,0 +1,30 @@
+The image is a table that provides nutritional information about an apple. It is structured with clear headings and data organized in columns. 
+
+### Description:
+1. **Header Row:**
+   - The first row contains headers including “Items,” “Weight in Grams,” “Water,” and “Calories.”
+  
+2. **Weight of an Apple:**
+   - The total weight of the apple is stated as 100 grams.
+
+3. **Nutritional Components:**
+   - **Protein:** 0.3 grams
+   - **Carbs:** 13.8 grams
+   - **Sugar:** 10.4 grams
+   - **Fiber:** 2.6 grams
+   - **Fat:** 0.2 grams
+   - These entries provide key nutritional values associated with the apple.
+
+4. **Water Content:**
+   - The apple contains 86% water, indicating a high moisture content.
+
+5. **Caloric Value:**
+   - The caloric content of the apple is given as 52 calories.
+
+6. **Usable and Refuse Portions:**
+   - The table concludes with two totals:
+     - **Useable Total:** 27.3 grams (the portion of the apple that is edible)
+     - **Refuse Total:** 72.7 grams (the inedible part, referred to as "Garbage").
+
+### Purpose:
+The primary purpose of this image is to inform viewers about the nutritional composition of an apple, highlighting both its edible parts and the waste produced when consuming it. This could serve educational purposes, dietary planning, or promoting healthy eating habits.

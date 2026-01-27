@@ -4,13 +4,15 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import VectorParams, Distance, PointStruct
 import time
 import logging
+import os
 
 # Enable logging to see what's happening
 logging.basicConfig(level=logging.INFO)
 
 # --- CONFIG ---
-QDRANT_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.4-OvJVbv3S1tGqBDLMOZCzt_VKVT24Ac2Za2_N5wtBM"
-QDRANT_URL = "https://d002b9a6-4c34-4bc3-b26d-9b3bdbcc6b4b.us-east4-0.gcp.cloud.qdrant.io"
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+# OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+QDRANT_URL = os.getenv("QDRANT_URL")
 COLLECTION_NAME = "pqnk_vectors_v1"
 VECTOR_DIM = 384
 

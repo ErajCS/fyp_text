@@ -1,0 +1,14 @@
+The image is a conceptual diagram illustrating the composition of soil and its various components. It is designed to visually explain the different types of soil particles and the spaces within the soil.
+
+### Description:
+- **Components**:
+  - **Sand**: Represented in a large, light brown shape, labeled "Sand (large)," indicating that these particles are relatively large in size.
+  - **Silt**: Shown in a medium brown shape, labeled "Silt (medium)," indicating that these particles are of medium size compared to sand and clay.
+  - **Clay**: Illustrated as a small brown shape labeled "Clay (small)," denoting that these particles are small.
+  - **Organic Matter**: Displayed in a dark brown area labeled "Organic Matter," indicating the presence of decomposed materials contributing to soil health.
+  - **Pore Space**: A blue area labeled "Pore Space," which refers to the spaces within the soil that can hold air and water.
+  - **Water**: Shown as a blue shape labeled "Water" and a nearby smaller blue area labeled "Wat," indicating the water present in the soil. 
+  - **Air**: A light blue area labeled "Air," representing the air pockets within the soil structure.
+
+### Purpose:
+The purpose of this image is to educate viewers about the various components that make up soil and their relative sizes. It emphasizes the roles of solid particles (sand, silt, and clay), organic matter, and the important voids (pore spaces) that facilitate the movement and retention of water and air within the soil. This diagram could be useful in educational contexts related to environmental science, agriculture, or soil management.

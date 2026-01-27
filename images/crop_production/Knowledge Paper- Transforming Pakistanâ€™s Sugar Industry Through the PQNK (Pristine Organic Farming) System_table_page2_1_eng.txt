@@ -1,0 +1,32 @@
+The image is a table comparing two agricultural systems: the Conventional System and the PQNK System. It outlines various factors related to sugarcane cultivation.
+
+### Description:
+- **Heads**: This column lists aspects of the farming process, including:
+  - Soil Preparation (cost in PKR)
+  - Seed amount (in Maunds)
+  - Fertilizer cost (specifically mentioning DAP, Urea, and SOP)
+  - Weedicide cost (in PKR)
+  - Maximum Yield (in Maunds per acre)
+  - Sugar Content (percentage)
+  - Harvesting Window (duration and months)
+
+- **Conventional System**: The second column details the values associated with the traditional agricultural system.
+  - Soil Preparation: 4,000 PKR
+  - Seed: 150 Maunds
+  - Fertilizer: 40,000 PKR
+  - Weedicide: 2,000 PKR
+  - Max Yield: 1,000 Maunds/Acre
+  - Sugar Content: 9%
+  - Harvesting Window: 5 months (November to March)
+
+- **PQNK System**: The third column shows the corresponding values for the PQNK System.
+  - Soil Preparation: 2,000 PKR
+  - Seed: 5 Maunds
+  - Fertilizer: 0 PKR (indicating no fertilizer used)
+  - Weedicide: 0 PKR
+  - Max Yield: 3,000 Maunds/Acre
+  - Sugar Content: 11-13%
+  - Harvesting Window: 8 months (October to May)
+
+### Purpose:
+The purpose of this table is to highlight the differences in cost, yield, and operational aspects between the Conventional and PQNK farming systems. It emphasizes the advantages of the PQNK System, which appears to be more efficient in terms of cost and yield, as well as offering a longer harvesting period and higher sugar content. This comparison can be useful for farmers and agricultural stakeholders considering which system to adopt for better productivity and profitability.

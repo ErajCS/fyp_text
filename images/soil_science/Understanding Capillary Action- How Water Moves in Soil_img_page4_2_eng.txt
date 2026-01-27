@@ -1,0 +1,16 @@
+The image titled "CAPILLARY ACTION" illustrates the phenomenon of capillary action in a visually engaging manner. It is divided into two sections: one on the left and the other on the right.
+
+### Left Section:
+- **Visual Depiction**: It features two glass tubes containing water, with one tube having a small pore and the other a large pore.
+- **Accompanying Text**:
+  - "Small Pore = High Rise" indicates that water rises higher in a tube with a smaller pore.
+  - "Large Pore = Low Rise" indicates that water rises lower in a tube with a larger pore.
+  
+### Right Section:
+- **Visual Depiction**: A close-up diagram of soil particles contains water within the spaces, illustrating how water interacts with soil.
+- **Key Terms**:
+  - "Adhesion: Water sticks to soil" points out the property that allows water molecules to cling to soil particles.
+  - "Cohesion: Water sticks to itself" explains how water molecules attract one another.
+
+### Purpose of the Image:
+The purpose of this image is to educate viewers on the concept of capillary action, which refers to the ability of water to flow in narrow spaces against gravity. It highlights the principles of adhesion and cohesion that are fundamental to this process, making it relevant for topics in biology, environmental science, or physics. This visualization can help enhance understanding of how plants absorb water from the soil, a key aspect of their growth and survival.

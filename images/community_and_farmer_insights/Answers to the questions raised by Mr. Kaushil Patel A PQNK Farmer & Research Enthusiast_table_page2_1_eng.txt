@@ -1,0 +1,20 @@
+The image depicts a reference table outlining the sunlight requirements for different types of crops, categorized into three sections: High Sunlight Crops, Moderate Sunlight Crops, and Low Light/Shade-Tolerant Crops.
+
+### Description of Each Section:
+1. **High Sunlight Crops:**
+   - **Definition:** Require 6-8+ hours of direct sunlight.
+   - **Crop Examples:** Includes fruits and vegetables such as tomatoes, peppers, and cucumbers, as well as grains like corn and wheat, and large root vegetables like potatoes.
+   - **Yield Note:** Highlights that yields will be significantly reduced in shaded areas, emphasizing the importance of sunlight for optimal growth.
+
+2. **Moderate Sunlight Crops:**
+   - **Definition:** Tolerate 4-6 hours of sunlight or full-day dappled shade.
+   - **Crop Examples:** Features crops such as broccoli, kale, and carrots.
+   - **Yield Note:** States that these crops will produce well in less sun, with a minor reduction in yield but maintained quality, and mentions mulching benefits.
+
+3. **Low Light/Shade-Tolerant Crops:**
+   - **Definition:** Thrive in 3-4 hours of direct sunlight or bright, indirect light.
+   - **Crop Examples:** Lists leafy greens like spinach and various herbs.
+   - **Yield Note:** Indicates these crops are ideal for areas with limited sunlight, like under trees or along boundary walls, with minimal impact on yield.
+
+### Purpose of the Image:
+The primary purpose of the image is to educate and inform gardeners and farmers about the sunlight needs of various crops. It serves as a practical guide to help optimize crop selection based on sunlight availability in their specific growing conditions. This information can assist in planning for better yields and healthier plants, depending on the sunlight exposure in their garden or agricultural setup.

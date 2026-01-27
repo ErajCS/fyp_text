@@ -1,0 +1,34 @@
+The image presents a table that outlines different methods of residue management in agriculture, along with associated characteristics such as dominant microbes, decomposition speed, humus formation, and the impact on soil health.
+
+### Description of the Table:
+
+- **Columns:** The table consists of five columns titled:
+  1. **Residue Management**: Refers to the methods of handling organic matter left after harvest.
+  2. **Dominant Microbes**: Lists the types of microbes most commonly involved in the decomposition process for each management method.
+  3. **Decomposition Speed**: Indicates how quickly organic matter decomposes under each method.
+  4. **Humus Formation**: Describes the degree to which humus, a stable form of organic matter, is created.
+  5. **Soil Health Impact**: Summarizes the effect of the residue management method on overall soil health.
+
+### Data Summarized in Rows:
+
+1. **Surface Mulch**:
+   - **Dominant Microbes**: Fungi and Actinomycetes
+   - **Decomposition Speed**: Slow to moderate
+   - **Humus Formation**: High
+   - **Soil Health Impact**: Contributes to long-term fertility and stable carbon levels.
+
+2. **Incorporated via Rotavator**:
+   - **Dominant Microbes**: Bacteria
+   - **Decomposition Speed**: Fast
+   - **Humus Formation**: Low to medium
+   - **Soil Health Impact**: Provides quick nutrients but tends to result in less humus.
+
+3. **Uprooted & Removed**:
+   - **Dominant Microbes**: Minimal
+   - **Decomposition Speed**: Very slow
+   - **Humus Formation**: None
+   - **Soil Health Impact**: Leads to soil degradation.
+
+### Purpose of the Image:
+
+The purpose of this image is to educate the viewer on different residue management practices in agriculture and their implications for soil health. It serves as a comparison tool, helping farmers or agronomists make informed decisions about how to manage crop residues for optimal soil fertility and health.

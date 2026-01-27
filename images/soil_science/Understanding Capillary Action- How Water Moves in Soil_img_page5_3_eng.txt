@@ -1,0 +1,14 @@
+The image presents a diagram illustrating the concept of capillary action in different types of soil: sand, loam, and clay. 
+
+### Description:
+- **Layout**: The diagram is divided into three vertical sections, each representing a different soil type.
+- **Soil Types**:
+  - **Left Section (Sand)**: The section labeled "Sand" shows loose, rounded particles with some water at the bottom. The water is depicted moving upward with a small arrow indicating the capillary rise, labeled as "Capillary rise."
+  - **Middle Section (Loam)**: The "Loam" section displays a mixture of coarse and fine particles. Water is illustrated at the bottom, and an upward arrow indicates a moderate rise, labeled "Moderate rise."
+  - **Right Section (Clay)**: The "Clay" section is shown with finely packed particles, representing a denser texture. Water here is indicated with an arrow showing high upward movement, labeled "High capillary rise."
+
+### Summary of Text:
+Above the diagrams, the title "CAPILLARY ACTION" is prominently displayed. Each section has a label identifying the soil type and the respective description of water movement associated with each soil.
+
+### Purpose:
+The image aims to educate viewers about how different soil types affect capillary action, specifically how water rises through the soil. This information is crucial for understanding soil characteristics, water retention, and agricultural practices, as it highlights the differences in water movement capabilities among sand, loam, and clay.

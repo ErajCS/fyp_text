@@ -8,26 +8,26 @@
 
 <body class="{% if user and user.dark_mode %}dark{% endif %}">
 
-<div class="main-card" style="max-width:500px;">
-    <h1>Login to AgriChat</h1>
+<div class="page-wrapper">
+    <div class="main-card auth-card">
+        <h1>Login to AgriChat</h1>
 
-    <form method="POST">
-        <input type="email" name="email" placeholder="Email" required class="message-input"><br><br>
-        <input type="password" name="password" placeholder="Password" required class="message-input"><br><br>
+        <form method="POST">
+            <input type="email" name="email" placeholder="Email" required class="message-input">
+            <input type="password" name="password" placeholder="Password" required class="message-input">
 
-        <button class="send-btn" style="width:100%;">Login</button>
-    </form>
+            <button class="send-btn auth-btn">Login</button>
+        </form>
 
-    {% if error %}
-        <p style="color:red; text-align:center; margin-top:10px;">
-            {{ error }}
+        {% if error %}
+            <p class="error-text">{{ error }}</p>
+        {% endif %}
+
+        <p class="auth-footer">
+            Don't have an account?
+            <a href="/signup">Sign Up</a>
         </p>
-    {% endif %}
-
-    <p style="text-align:center; margin-top:20px;">
-        Don't have an account?
-        <a href="/signup">Sign Up</a>
-    </p>
+    </div>
 </div>
 
 </body>

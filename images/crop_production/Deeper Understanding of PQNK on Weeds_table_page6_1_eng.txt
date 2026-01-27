@@ -1,0 +1,24 @@
+The image is a table titled "How It Works in Different Soil Textures." It summarizes the characteristics of three types of soil textures—Sandy, Loam, and Clay/Compacted—and describes the effects these textures have on farming, along with solutions for improving soil quality through root diversity.
+
+### Description of the Table:
+
+1. **Columns**:
+   - The first column lists the soil textures: Sandy, Loam, and Clay/Compacted.
+   - The second column outlines what farmers typically experience with each soil type.
+   - The third column describes how increasing root diversity can mitigate the issues associated with each soil type.
+
+2. **Content**:
+   - **Sandy Soil**: 
+     - Farmers observe rapid drainage (e.g., "Rain disappears in an hour; plants wilt by noon."). 
+     - Root diversity helps by creating fibrous mats that retain water and allow taproots to access moisture deeper in the soil.
+
+   - **Loam**: 
+     - Farmers note that this type can become crusty after heavy rain yet recovers quickly ("Gets crusty after heavy rain, but recovers.").
+     - Maintaining living roots can help prevent damage from traffic and maintain soil balance.
+
+   - **Clay/Compacted Soil**: 
+     - Farmers find that water stands and tractor ruts linger ("Water stands, tractor ruts stay for weeks.").
+     - Diversity in root types can break up compacted layers, allowing for better water infiltration and soil health.
+
+### Purpose:
+The purpose of the image is to educate farmers and soil managers about the relationship between soil texture, farming challenges, and the positive impact of root diversity in enhancing soil health and functionality. The portrayal aims to encourage practices that support sustainable agriculture through improved soil management techniques.

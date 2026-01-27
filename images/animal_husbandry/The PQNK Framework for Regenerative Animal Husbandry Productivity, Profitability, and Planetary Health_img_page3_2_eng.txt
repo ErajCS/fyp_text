@@ -1,0 +1,22 @@
+The image appears to be an informational table outlining various methodologies of animal husbandry along with their applications, remarks, and current status stages. 
+
+### Description:
+
+1. **Columns**:
+   - **Sr.**: Serial number for ease of reference.
+   - **Methodology**: Different approaches to animal husbandry.
+   - **Application**: Number of animals managed and practices involved.
+   - **Remarks**: Key points about each methodology.
+   - **Status - Stage**: Current relevance and prevalence in the context of the Indian Subcontinent.
+
+2. **Rows**:
+   - **Small Holder**: Describes a family-managed approach with 1-5 animals, focusing on low cost and nutritional benefits. It mentions that this method is crucial for rural nutrition and economic stability.
+   - **Conventional/Commercial**: Discusses a business-oriented model involving 5-50 animals, relying on crossbred animals. It highlights moderate to high costs of inputs but notes profitability tied to market prices.
+   - **Industrial/Corporate**: Focuses on large-scale operations with hundreds of animals, mentioning imported breeds and total mixed ration feed. It points out the high risks due to costs and potential losses.
+   - **PQNK (Pristine Organic)**: Emphasizes a focus on native breeds and organic practices, stating low costs and high profitability through direct consumer sales.
+
+### Text Summary:
+- Each methodology is outlined with the number of animals, specific practices, and key characteristics, focusing on the economic implications and market realities in the Indian Subcontinent.
+
+### Purpose of the Image:
+The image serves as an educational resource that compares different animal husbandry methodologies, providing insights into their operational scales, economic viability, and community impacts in agricultural settings, particularly in India. It aims to inform stakeholders like farmers, policymakers, and researchers about the diverse approaches in animal husbandry and trends toward more sustainable practices.

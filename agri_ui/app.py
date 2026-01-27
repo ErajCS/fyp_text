@@ -245,24 +245,240 @@
 
 
 
+# import psycopg2
+# from werkzeug.security import generate_password_hash, check_password_hash
+# from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+# from flask_sqlalchemy import SQLAlchemy
+# from flask_bcrypt import Bcrypt
+# from flask_login import LoginManager, login_user, login_required, logout_user, UserMixin, current_user
+# from rag_demo import rag_pipeline
+# from datetime import datetime
+
+# # =======================
+# # FLASK APP CONFIG
+# # =======================
+# app = Flask(__name__)
+# app.config["SECRET_KEY"] = "supersecretkey"
+
+# # PostgreSQL connection URI (update username/password/dbname as needed)
+# app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://postgres:admin123@localhost:5432/pqnk_db"
+# app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+# db = SQLAlchemy(app)
+# bcrypt = Bcrypt(app)
+
+# login_manager = LoginManager()
+# login_manager.init_app(app)
+# login_manager.login_view = "login"
+
+# # =======================
+# # DATABASE MODEL
+# # =======================
+# class User(db.Model, UserMixin):
+#     __tablename__ = 'users'
+#     id = db.Column('user_id', db.Integer, primary_key=True)
+#     name = db.Column('full_name', db.String(100), nullable=False)
+#     email = db.Column(db.String(255), unique=True, nullable=False)
+#     phone = db.Column(db.String(20))  # new field
+#     password = db.Column('password_hash', db.Text, nullable=False)
+#     role = db.Column(db.String(20), nullable=False, default='seeker')
+#     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+#     is_verified = db.Column(db.Boolean, default=False)
+#     otp_code = db.Column(db.String(6))
+#     otp_expiry = db.Column(db.DateTime)
+#     dark_mode = db.Column(db.Boolean, default=False)
+
+# @login_manager.user_loader
+# def load_user(user_id):
+#     return User.query.get(int(user_id))
+
+# # =======================
+# # ROUTES
+# # =======================
+
+# @app.route("/", methods=["GET", "POST"])
+# def login():
+#     if request.method == "POST":
+#         email = request.form["email"]
+#         password = request.form["password"]
+
+#         user = User.query.filter_by(email=email).first()
+
+#         if user and bcrypt.check_password_hash(user.password, password):
+#             login_user(user)
+#             return redirect("/dashboard")
+
+#         return render_template("login.html", error="Invalid email or password")
+
+#     return render_template("login.html")
+
+
+# @app.route("/signup", methods=["GET", "POST"])
+# def signup():
+#     error = None
+#     success = None
+
+#     if request.method == "POST":
+#         name = request.form["name"]
+#         email = request.form["email"]
+#         phone = request.form["phone"]
+#         password_raw = request.form["password"]
+#         confirm_password = request.form["confirm_password"]
+
+#         # Password match validation
+#         if password_raw != confirm_password:
+#             error = "Passwords do not match."
+#             return render_template("signup.html", error=error)
+
+#         # Check if email already exists
+#         if User.query.filter_by(email=email).first():
+#             error = "Email already exists."
+#             return render_template("signup.html", error=error)
+
+#         # Hash password
+#         password_hashed = bcrypt.generate_password_hash(password_raw).decode("utf-8")
+
+#         # Save new user
+#         new_user = User(
+#             name=name,
+#             email=email,
+#             phone=phone,
+#             password=password_hashed,
+#             role='seeker',        # default role
+#             dark_mode=False
+#         )
+
+#         db.session.add(new_user)
+#         db.session.commit()
+
+#         success = "Account created successfully! You may now login."
+#         return render_template("signup.html", success=success)
+
+#     return render_template("signup.html")
+
+
+# @app.route("/dashboard")
+# @login_required
+# def dashboard():
+#     return render_template("dashboard.html", user=current_user)
+
+
+# @app.route("/toggle_theme")
+# @login_required
+# def toggle_theme():
+#     current_user.dark_mode = not current_user.dark_mode
+#     db.session.commit()
+#     return redirect(request.referrer)
+
+
+# @app.route("/logout")
+# @login_required
+# def logout():
+#     logout_user()
+#     return redirect("/")
+
+
+# # =======================
+# # CHATBOT ROUTES
+# # =======================
+# @app.route("/chatbot")
+# @login_required
+# def chatbot():
+#     return render_template("chatbot.html", user=current_user)
+
+
+# @app.route("/get_response", methods=["POST"])
+# @login_required
+# def get_response():
+#     user_message = request.json.get("msg")
+#     ai_response = rag_pipeline(user_message)
+#     return jsonify({"response": ai_response})
+
+
+# # =======================
+# # RUN
+# # =======================
+# if __name__ == "__main__":
+#     with app.app_context():
+#         db.create_all()
+#     app.run(debug=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import psycopg2
+import asyncio
+import edge_tts
+import uuid
+import os
+import re
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, login_user, login_required, logout_user, UserMixin, current_user
-from rag_demo import rag_pipeline
+from rag_demo import rag_pipeline, detect_lang 
 from datetime import datetime
 
 # =======================
 # FLASK APP CONFIG
 # =======================
-app = Flask(__name__)
-app.config["SECRET_KEY"] = "supersecretkey"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, '..', 'static')
 
-# PostgreSQL connection URI (update username/password/dbname as needed)
+
+app = Flask(__name__, static_folder=STATIC_DIR)
+app.config["SECRET_KEY"] = "supersecretkey"
+# PostgreSQL connection URI
 app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://postgres:admin123@localhost:5432/pqnk_db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+# Create folder for audio files
+AUDIO_DIR = os.path.join(STATIC_DIR, "audio")
+os.makedirs(AUDIO_DIR, exist_ok=True)
 
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
@@ -279,7 +495,7 @@ class User(db.Model, UserMixin):
     id = db.Column('user_id', db.Integer, primary_key=True)
     name = db.Column('full_name', db.String(100), nullable=False)
     email = db.Column(db.String(255), unique=True, nullable=False)
-    phone = db.Column(db.String(20))  # new field
+    phone = db.Column(db.String(20))
     password = db.Column('password_hash', db.Text, nullable=False)
     role = db.Column(db.String(20), nullable=False, default='seeker')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -293,6 +509,23 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 # =======================
+# HELPER: TEXT TO SPEECH
+# =======================
+async def generate_speech_file(text, voice, output_path):
+    communicate = edge_tts.Communicate(text, voice)
+    await communicate.save(output_path)
+
+def clean_text_for_audio(text):
+    # Remove Markdown (**, ###)
+    text = text.replace("*", "").replace("#", "")
+    # Remove Sources section
+    if "### Sources" in text:
+        text = text.split("### Sources")[0]
+    if "### حوالہ جات" in text:
+        text = text.split("### حوالہ جات")[0]
+    return text
+
+# =======================
 # ROUTES
 # =======================
 
@@ -301,67 +534,38 @@ def login():
     if request.method == "POST":
         email = request.form["email"]
         password = request.form["password"]
-
         user = User.query.filter_by(email=email).first()
-
         if user and bcrypt.check_password_hash(user.password, password):
             login_user(user)
             return redirect("/dashboard")
-
         return render_template("login.html", error="Invalid email or password")
-
     return render_template("login.html")
-
 
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
-    error = None
-    success = None
-
     if request.method == "POST":
         name = request.form["name"]
         email = request.form["email"]
         phone = request.form["phone"]
         password_raw = request.form["password"]
         confirm_password = request.form["confirm_password"]
-
-        # Password match validation
+        
         if password_raw != confirm_password:
-            error = "Passwords do not match."
-            return render_template("signup.html", error=error)
-
-        # Check if email already exists
+            return render_template("signup.html", error="Passwords do not match.")
         if User.query.filter_by(email=email).first():
-            error = "Email already exists."
-            return render_template("signup.html", error=error)
-
-        # Hash password
+            return render_template("signup.html", error="Email already exists.")
+            
         password_hashed = bcrypt.generate_password_hash(password_raw).decode("utf-8")
-
-        # Save new user
-        new_user = User(
-            name=name,
-            email=email,
-            phone=phone,
-            password=password_hashed,
-            role='seeker',        # default role
-            dark_mode=False
-        )
-
+        new_user = User(name=name, email=email, phone=phone, password=password_hashed)
         db.session.add(new_user)
         db.session.commit()
-
-        success = "Account created successfully! You may now login."
-        return render_template("signup.html", success=success)
-
+        return render_template("signup.html", success="Account created successfully!")
     return render_template("signup.html")
-
 
 @app.route("/dashboard")
 @login_required
 def dashboard():
     return render_template("dashboard.html", user=current_user)
-
 
 @app.route("/toggle_theme")
 @login_required
@@ -370,22 +574,19 @@ def toggle_theme():
     db.session.commit()
     return redirect(request.referrer)
 
-
 @app.route("/logout")
 @login_required
 def logout():
     logout_user()
     return redirect("/")
 
-
 # =======================
-# CHATBOT ROUTES
+# CHATBOT & AUDIO ROUTES
 # =======================
 @app.route("/chatbot")
 @login_required
 def chatbot():
     return render_template("chatbot.html", user=current_user)
-
 
 @app.route("/get_response", methods=["POST"])
 @login_required
@@ -394,6 +595,45 @@ def get_response():
     ai_response = rag_pipeline(user_message)
     return jsonify({"response": ai_response})
 
+@app.route("/generate_audio", methods=["POST"])
+@login_required
+def generate_audio():
+    text = request.json.get("text", "")
+    if not text:
+        return jsonify({"error": "No text provided"}), 400
+
+    print(f"🎤 Request to read: {text[:50]}...") # Debug print
+
+    # 1. Clean Text
+    clean_text = clean_text_for_audio(text)
+
+    # 2. Detect Language
+    lang = detect_lang(clean_text)
+    if lang == "ur":
+        voice = "ur-PK-UzmaNeural"
+    else:
+        voice = "en-US-AriaNeural"
+
+    # 3. Generate Filename
+    filename = f"speech_{uuid.uuid4()}.mp3"
+    filepath = os.path.join(AUDIO_DIR, filename)
+
+    # 4. Generate Audio (FIXED ASYNC LOOP)
+    # Use a new event loop to avoid conflict with Flask's thread
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(generate_speech_file(clean_text, voice, filepath))
+        loop.close()
+    except Exception as e:
+        print(f"❌ TTS Error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+    # 5. Return URL
+    audio_url = url_for('static', filename=f'audio/{filename}')
+    print(f"✅ Audio generated: {audio_url}")
+    
+    return jsonify({"audio_url": audio_url})
 
 # =======================
 # RUN
