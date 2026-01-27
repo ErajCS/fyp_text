@@ -2116,15 +2116,22 @@ import time
 
 from rich.console import Console  # <--- NEW
 from rich.markdown import Markdown # <--- NEW
+from dotenv import load_dotenv
+load_dotenv()
+
+# import os
 
 # ================= CONFIG =================
 # Force terminal to recognize colors even in restricted environments
 console = Console(force_terminal=True)
 
 # 🔑 API KEYS
-QDRANT_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.PGM-O0IyOg9ghiCNnS2atVZk7rYtoqv09SJS6MLRVtI"
-QDRANT_URL = "https://5248dcb1-2491-456b-8620-482380044a75.us-east4-0.gcp.cloud.qdrant.io" 
-OPENAI_API_KEY = "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"
+# import os
+
+QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+QDRANT_URL = os.getenv("QDRANT_URL")
+
 COLLECTION_NAME = "pqnk_v2"
 
 # ⚙️ MODEL SETTINGS

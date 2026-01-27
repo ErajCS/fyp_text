@@ -4,6 +4,7 @@ import time
 from pathlib import Path
 from openai import OpenAI
 from deep_translator import GoogleTranslator
+import os
 
 # ---------------- CONFIG ----------------
 IMAGE_ROOT = r"C:\\Users\\smwaj\\fyp_text\\images"
@@ -11,7 +12,7 @@ SUPPORTED_EXTS = {".png", ".jpg", ".jpeg"}
 MODEL = "gpt-4o-mini"
 # ---------------------------------------
 
-client = OpenAI(api_key="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")  
+client = OpenAI(OPENAI_API_KEY_2 = os.getenv("OPENAI_API_KEY_2")) 
 
 logging.basicConfig(
     level=logging.INFO,
