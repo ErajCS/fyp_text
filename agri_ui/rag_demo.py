@@ -164,7 +164,6 @@
 # DB_NAME = "pqnk_db"
 # DB_USER = "postgres"
 # DB_PASS = "admin123"  # <--- CHANGE THIS
-# OPENAI_API_KEY = "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" # REPLACE WITH YOUR KEY (OR ENV VAR)
 
 # # Initialize Models
 # print("Loading models...")
@@ -319,8 +318,7 @@
 # DB_USER = "postgres"
 # DB_PASS = "admin123"  # <--- CONFIRM YOUR PASSWORD
 # # Ensure your API Key is set here or in environment variables
-# OPENAI_API_KEY = "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" 
-
+#
 # # Initialize Models
 # print("Loading models...")
 # model = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
@@ -493,11 +491,7 @@
 # import qdrant_client  # To check version
 
 # # ================= CONFIG =================
-# QDRANT_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.4-OvJVbv3S1tGqBDLMOZCzt_VKVT24Ac2Za2_N5wtBM"
-# QDRANT_URL = "https://d002b9a6-4c34-4bc3-b26d-9b3bdbcc6b4b.us-east4-0.gcp.cloud.qdrant.io"
-# COLLECTION_NAME = "pqnk_vectors_v1"
-# OPENAI_API_KEY = "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"
-
+#AI_
 # # Check Qdrant version
 # print(f"🔧 Qdrant client version: {qdrant_client.__version__}")
 
@@ -923,11 +917,7 @@
 # import sys
 
 # # ================= CONFIG =================
-# QDRANT_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.4-OvJVbv3S1tGqBDLMOZCzt_VKVT24Ac2Za2_N5wtBM"
-# QDRANT_URL = "https://d002b9a6-4c34-4bc3-b26d-9b3bdbcc6b4b.us-east4-0.gcp.cloud.qdrant.io"
-# COLLECTION_NAME = "pqnk_vectors_v1"
-# OPENAI_API_KEY = "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"
-
+# QDRAN
 # # =========================================
 # print("🚀 Initializing RAG System...")
 
@@ -1345,11 +1335,6 @@
 
 
 
-#  QDRANT_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.4-OvJVbv3S1tGqBDLMOZCzt_VKVT24Ac2Za2_N5wtBM"
-# QDRANT_URL = "https://d002b9a6-4c34-4bc3-b26d-9b3bdbcc6b4b.us-east4-0.gcp.cloud.qdrant.io"
-# COLLECTION_NAME = "pqnk_vectors_v1"
-# OPENAI_API_KEY = "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"
-
 
 
 
@@ -1365,11 +1350,7 @@
 # import sys
 
 # # ================= CONFIG =================
-# QDRANT_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.4-OvJVbv3S1tGqBDLMOZCzt_VKVT24Ac2Za2_N5wtBM"
-# QDRANT_URL = "https://d002b9a6-4c34-4bc3-b26d-9b3bdbcc6b4b.us-east4-0.gcp.cloud.qdrant.io"
-# COLLECTION_NAME = "pqnk_vectors_v1"
-# OPENAI_API_KEY = "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"
-
+# QDRANT
 # MIN_SCORE_THRESHOLD = 0.25
 # TOP_K = 8
 
@@ -1677,18 +1658,7 @@
 # # OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 # # QDRANT_URL = os.getenv("QDRANT_URL")
 # # COLLECTION_NAME = "pqnk_vectors_v1"
-
-# # QDRANT_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.4-OvJVbv3S1tGqBDLMOZCzt_VKVT24Ac2Za2_N5wtBM"
-# # QDRANT_URL = "https://d002b9a6-4c34-4bc3-b26d-9b3bdbcc6b4b.us-east4-0.gcp.cloud.qdrant.io"
-# # COLLECTION_NAME = "pqnk_vectors_v1"
-# # OPENAI_API_KEY = "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" 
-
-
-# # 🔑 API KEYS (Ideally set these in your environment variables)
-# QDRANT_API_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2Nlc3MiOiJtIn0.PGM-O0IyOg9ghiCNnS2atVZk7rYtoqv09SJS6MLRVtI"
-# QDRANT_URL = "https://5248dcb1-2491-456b-8620-482380044a75.us-east4-0.gcp.cloud.qdrant.io" 
-# OPENAI_API_KEY = "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"
-# COLLECTION_NAME = "pqnk_v2"
+# ME = "pqnk_v2"
 
 # '''
 # • Prevents weak retrieval matches
