@@ -1,10 +1,17 @@
+import os
 import psycopg2
 import bcrypt
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
-# --- CONFIG ---
-DB_NAME = "pqnk_db"
-DB_USER = "postgres"
-DB_PASS = "admin123"
+# --- CONFIG (from .env) ---
+DB_NAME = os.getenv("DB_NAME", "pqnk_db")
+DB_USER = os.getenv("DB_USER", "postgres")
+DB_PASS = os.getenv("DB_PASS", "")
+
 
 def seed_users():
     conn = psycopg2.connect(dbname=DB_NAME, user=DB_USER, password=DB_PASS, host="localhost")

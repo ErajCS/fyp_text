@@ -4,12 +4,18 @@ import psycopg2
 from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 from langdetect import detect
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
-# --- CONFIG ---
-BASE_DIR = r"text_pdfs"  # Matches your folder structure
-DB_NAME = "pqnk_db"
-DB_USER = "postgres"
-DB_PASS = "admin123"  # <--- CHANGE THIS
+# --- CONFIG (from .env) ---
+BASE_DIR = r"text_pdfs"
+DB_NAME = os.getenv("DB_NAME", "pqnk_db")
+DB_USER = os.getenv("DB_USER", "postgres")
+DB_PASS = os.getenv("DB_PASS", "")
+
 
 # Load Model
 print("Loading Model...")

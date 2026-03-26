@@ -1,11 +1,18 @@
 import psycopg2
+import os
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
-from pgvector.psycopg2 import register_vector
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
-DB_USER = "postgres"
-DB_PASS = "admin123"
-DB_HOST = "localhost"
-DB_NAME = "pqnk_db"
+
+DB_USER = os.getenv("DB_USER", "postgres")
+DB_PASS = os.getenv("DB_PASS", "")
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_NAME = os.getenv("DB_NAME", "pqnk_db")
+
 
 
 def create_database():

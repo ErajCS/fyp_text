@@ -2072,8 +2072,405 @@
 
 
 
+# import os
+# import sys
+
+# # 1. Enable Windows Color Support (Crucial for Windows users)
+# os.system("")
+
+# from qdrant_client import QdrantClient
+# from openai import OpenAI
+# from spellchecker import SpellChecker
+# import re
+# import time
+
+# from rich.console import Console  # <--- NEW
+# from rich.markdown import Markdown # <--- NEW
+# from dotenv import load_dotenv
+# load_dotenv()
+
+# # import os
+
+# # ================= CONFIG =================
+# # Force terminal to recognize colors even in restricted environments
+# console = Console(force_terminal=True)
+
+# # 🔑 API KEYS
+# # import os
+
+# QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
+# OPENAI_API_KEY = "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"
+# QDRANT_URL = os.getenv("QDRANT_URL")
+
+# COLLECTION_NAME = "pqnk_v2" 
+
+# # ⚙️ MODEL SETTINGS
+# GENERATION_MODEL = "gpt-4o"  
+# EMBEDDING_MODEL = "text-embedding-3-small" # <--- Must match ingest_data.py
+
+# # 🛡️ RETRIEVAL SAFEGUARDS
+# MIN_SCORE_THRESHOLD = 0.25
+# TOP_K = 8
+
+# # ================= ENTITY MEMORY =================
+# ENTITY_MEMORY = { "last_entity": None }
+# ACRONYM_MEMORY = {}
+# KNOWN_ACRONYMS = { "pqnk": "PQNK" }
+
+# # =========================================
+# print(f"🚀 Initializing RAG System linked to {COLLECTION_NAME}...")
+
+# # Models
+# # NOTE: SentenceTransformer is REMOVED. We use OpenAI for everything now.
+# spell_en = SpellChecker()
+# openai_client = OpenAI(api_key=OPENAI_API_KEY)
+
+# # Qdrant
+# qdrant = QdrantClient(
+#     url=QDRANT_URL,
+#     api_key=QDRANT_API_KEY,
+#     timeout=30
+# )
+
+# # ============ CORE UTILS ============
+
+# def get_embedding(text):
+#     """
+#     Generates vector using OpenAI to match the stored data.
+#     """
+#     text = text.replace("\n", " ")
+#     return openai_client.embeddings.create(
+#         input=[text], 
+#         model=EMBEDDING_MODEL
+#     ).data[0].embedding
+
+# def normalize_query(text):
+#     text = text.strip()
+#     text = re.sub(r"\s+", " ", text)
+#     return text
+
+# def detect_lang(text):
+#     try:
+#         urdu_chars = len(re.findall(r'[\u0600-\u06FF]', text))
+#         eng_chars = len(re.findall(r'[A-Za-z]', text))
+#         if urdu_chars > eng_chars: return "ur"
+#         return "en"
+#     except: return "en"
+
+# def correct_spelling(text, lang):
+#     if lang != "en": return text
+#     return " ".join([spell_en.correction(w) or w if w.isalpha() else w for w in text.split()])
+
+# # ============ ENTITY & ACRONYM LOGIC ============
+
+# def extract_entity(text):
+#     tokens = re.findall(r'\b\w+\b', text.lower())
+#     for token in tokens:
+#         if token in ["pqnk"]: return token.upper()
+#     return None
+
+# def resolve_entity(text):
+#     entity = extract_entity(text)
+#     if entity:
+#         ENTITY_MEMORY["last_entity"] = entity
+#         return text
+#     if "it" in text.lower() or "its" in text.lower():
+#         if ENTITY_MEMORY["last_entity"]:
+#             return text + f" ({ENTITY_MEMORY['last_entity']})"
+#     return text
+
+# def detect_acronym(text):
+#     for word in text.lower().split():
+#         clean = re.sub(r'\W+', '', word)
+#         if clean in KNOWN_ACRONYMS: return KNOWN_ACRONYMS[clean]
+#     return None
+
+# def expand_acronym_query(query):
+#     acronym = detect_acronym(query)
+#     if not acronym: return query
+#     if any(x in query.lower() for x in ["meaning", "define", "full form"]):
+#         return f"what is {acronym} definition"
+#     return query
+
+# # ============ INTELLIGENCE LAYER ============
+
+# def compress_intent(query, lang):
+#     prompt = (f"Rewrite as a short search intent:\n{query}" if lang == "en" 
+#               else f"اس سوال کو مختصر تلاش کے ارادے میں تبدیل کریں:\n{query}")
+#     try:
+#         r = openai_client.chat.completions.create(
+#             model="gpt-4o-mini",
+#             messages=[{"role": "user", "content": prompt}],
+#             temperature=0.0, max_tokens=30
+#         )
+#         return r.choices[0].message.content.strip()
+#     except: return query
+
+# def is_multi_hop_question(query):
+#     triggers = ["why", "how", "importance", "impact", "benefit", "significance", "role"]
+#     return any(t in query.lower() for t in triggers)
+
+# def is_definition_question(query):
+#     triggers = ["what is", "meaning", "define", "definition", "kya hai"]
+#     return any(t in query.lower() for t in triggers)
+
+# def normalize_intent(query):
+#     q = query.lower().strip()
+#     patterns = [
+#         (r"what is the meaning of (.+)", r"what is \1"),
+#         (r"define (.+)", r"what is \1"),
+#     ]
+#     for p, r in patterns: q = re.sub(p, r, q)
+#     return q.strip()
+
+# def expand_agri_query(query):
+#     expansions = [query]
+#     q = query.lower()
+#     if "pruning" in q:
+#         expansions.extend([query.replace("pruning", "pruning method"), query.replace("pruning", "how to prune")])
+#     if "mango" in q:
+#         expansions.extend([query.replace("mango", "mango tree")])
+#     return list(set(expansions))
+
+# def generate_paraphrases(query, lang):
+#     prompt = (f"Generate 2 paraphrases:\n{query}" if lang == "en" else f"اس سوال کے دو متبادل جملے بنائیں:\n{query}")
+#     try:
+#         r = openai_client.chat.completions.create(
+#             model="gpt-4o-mini",
+#             messages=[{"role": "user", "content": prompt}],
+#             temperature=0.6, max_tokens=60
+#         )
+#         lines = r.choices[0].message.content.split("\n")
+#         return [query] + [l.strip() for l in lines if len(l.strip()) > 5]
+#     except: return [query]
+
+# # ============ RETRIEVAL (WITH TERMINAL DEBUGGING) ============
+
+# def retrieve_chunks(query, top_k=8):
+#     lang = detect_lang(query)
+#     query = correct_spelling(query, lang)  
+
+#     # Expand Query
+#     paraphrases = generate_paraphrases(query, lang)
+#     paraphrases.extend(expand_agri_query(query))
+#     intent = compress_intent(query, lang)
+#     if intent and intent != query: paraphrases.append(intent)
+    
+#     unique_queries = list(set(paraphrases))
+
+#     print(f"\n🔎 Processing {len(unique_queries)} variations for: '{query}'")
+#     print("-" * 60)
+
+#     all_hits = []
+
+#     for q in unique_queries:
+#         try:
+#             # 🟢 UPDATED: Using OpenAI Embedding instead of local model
+#             embedding = get_embedding(q)
+            
+#             res = qdrant.query_points(
+#                 collection_name=COLLECTION_NAME,
+#                 query=embedding,
+#                 limit=top_k,
+#                 with_payload=True
+#             )
+            
+#             # --- DEBUG PRINT ---
+#             if res.points:
+#                 print(f"   Query: '{q}'")
+#                 for p in res.points:
+#                     doc = p.payload.get("doc_name", "Unknown")
+#                     cat = p.payload.get("category", "N/A")
+#                     print(f"     • [Score: {p.score:.4f}] {doc} ({cat})")
+#                     all_hits.append({
+#                         "text": p.payload.get("text", ""),
+#                         "payload": p.payload,
+#                         "score": p.score
+#                     })
+#         except Exception as e:
+#             print(f"⚠️ Retrieval failed for '{q}': {e}")
+#             continue
+
+#     print("-" * 60)
+
+#     # Deduplication
+#     unique = {}
+#     for h in all_hits:
+#         t = h["text"]
+#         if t not in unique or h["score"] > unique[t]["score"]:
+#             unique[t] = h
+
+#     ranked = sorted(unique.values(), key=lambda x: x["score"], reverse=True)
+#     final_chunks = [r for r in ranked if r["score"] >= MIN_SCORE_THRESHOLD][:top_k]
+
+#     # --- FINAL DEBUG PRINT ---
+#     print(f"✅ Final Top-{len(final_chunks)} Chunks Passed to GPT-4o:")
+#     if not final_chunks:
+#         print("   ❌ No chunks met the threshold.")
+#     else:
+#         for i, chunk in enumerate(final_chunks):
+#             doc = chunk["payload"].get("doc_name", "Unknown")
+#             print(f"   {i+1}. [Score: {chunk['score']:.4f}] {doc}")
+#             print(f"      Preview: \"{chunk['text'][:80].replace(chr(10), ' ')}...\"")
+#     print("=" * 60 + "\n")
+
+#     return final_chunks
+
+# def multi_hop_retrieval(query):
+#     print("\n🐰 Hop 1: Definition Search")
+#     sub_query = generate_sub_query(query) # Using helper function
+    
+#     chunks_1 = retrieve_chunks(sub_query)
+#     definition = generate_answer(sub_query, chunks_1)
+    
+#     # Store context
+#     grounding_text = definition[:500] 
+
+#     print(f"\n🐰 Hop 2: Enriched Context Search")
+#     enriched_query = f"{query}. Context: {grounding_text}"
+#     chunks_2 = retrieve_chunks(enriched_query)
+
+#     # Combine chunks from both hops
+#     combined_map = {hash(c["text"]): c for c in chunks_1 + chunks_2}
+#     return list(combined_map.values())
+
+# def generate_sub_query(query):
+#     # Quick helper for multi-hop
+#     words = query.split()
+#     return " ".join(words[:4])
+
+# # ============ ANSWERING ============
+
+# # ============ ANSWERING ============
+
+# def generate_answer(original_query, chunks, target_lang="en"):
+#     # 1. Safety Check
+#     if not chunks:
+#         return ("معلومات دستیاب نہیں۔" if target_lang == "ur" else "Information not available.")
+
+#     # 2. Prepare Context
+#     context_text = ""
+#     for c in chunks:
+#         doc = c['payload'].get('doc_name', 'Unknown')
+#         context_text += f"Source: {doc}\nContent: {c['text']}\n\n"
+
+#     # 3. Define Prompts with Formatting Instructions
+#     if target_lang == "ur":
+#         system_prompt = (
+#             "You are an agricultural expert. You will receive context in English. "
+#             "You must answer the user's question in clear, professional Urdu. "
+#             "IMPORTANT FORMATTING RULES:\n"
+#             "1. Use **Urdu Numerals** (۱, ۲, ۳) for lists followed by a dash (e.g., ۱- متن).\n"
+#             "2. Do NOT use English/Standard Markdown numbering (like 1. or 1-).\n"
+#             "3. Do NOT mention sources inside the paragraphs.\n"
+#             "4. At the very end, leave a blank line and list sources under '### حوالہ جات:'."
+#         )
+#     else:
+#         system_prompt = (
+#             "You are a helpful assistant. Answer ONLY using the provided Context. "
+#             "Do NOT cite sources inside the text sentences. "
+#             "At the very end of your response, leave a blank line and list the unique source names under the heading '### Sources:'."
+#         )
+
+#     # 4. Generate
+#     r = openai_client.chat.completions.create(
+#         model=GENERATION_MODEL, # GPT-4o
+#         messages=[
+#             {"role": "system", "content": system_prompt},
+#             {"role": "user", "content": f"Context:\n{context_text}\n\nQuestion:\n{original_query}"}
+#         ],
+#         temperature=0.3,
+#         max_tokens=800
+#         # retrieve_chunks = 8
+#     )
+#     return r.choices[0].message.content
+
+# # ============ PIPELINE ============
+
+# def rag_pipeline(query):
+#     print(f"\n💬 USER QUERY: {query}")
+#     query = normalize_query(query)
+#     query = normalize_intent(query)
+#     query = resolve_entity(query)
+#     query = expand_acronym_query(query)
+
+#     if is_multi_hop_question(query):
+#         chunks = multi_hop_retrieval(query) # Now returns combined chunks
+#         answer = generate_answer(query, chunks)
+#         return answer
+
+#     chunks = retrieve_chunks(query)
+#     answer = generate_answer(query, chunks)
+#     return answer
+
+# # ============ TEST ============
+
+# # ============ TEST ============
+
+# if __name__ == "__main__":
+#     # Test queries
+#     tests = [
+#         "What is PQNK?",
+#         "How to prune raddish?",
+#         "آلو کی کاشت کے لیے پانی", 
+#     ]
+
+#     print("\n" + "="*50)
+#     print("🤖 AGRICULTURAL RAG CHATBOT (Formatted Output)")
+#     print("="*50 + "\n")
+
+#     for q in tests:
+#         # 1. Show the Question nicely
+#         console.print(f"[bold cyan]USER:[/bold cyan] {q}")
+        
+#         # 2. Get the raw answer
+#         raw_answer = rag_pipeline(q)
+        
+#         # 3. Render the Markdown (Bold, Headings, Lists)
+#         console.print(f"[bold green]BOT:[/bold green]")
+#         console.print(Markdown(raw_answer))
+        
+#         print("-" * 50 + "\n")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import os
 import sys
+import re
+import time
 
 # 1. Enable Windows Color Support (Crucial for Windows users)
 os.system("")
@@ -2081,51 +2478,45 @@ os.system("")
 from qdrant_client import QdrantClient
 from openai import OpenAI
 from spellchecker import SpellChecker
-import re
-import time
 
-from rich.console import Console  # <--- NEW
-from rich.markdown import Markdown # <--- NEW
+from rich.console import Console
+from rich.markdown import Markdown
 from dotenv import load_dotenv
+
 load_dotenv()
 
-# import os
-
 # ================= CONFIG =================
-# Force terminal to recognize colors even in restricted environments
+
 console = Console(force_terminal=True)
 
-# 🔑 API KEYS
-# import os
-
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 QDRANT_URL = os.getenv("QDRANT_URL")
+
+# ⚠️ API key must be in .env — never hardcode here!
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
 
 COLLECTION_NAME = "pqnk_v2"
 
 # ⚙️ MODEL SETTINGS
-GENERATION_MODEL = "gpt-4o"  
-EMBEDDING_MODEL = "text-embedding-3-small" # <--- Must match ingest_data.py
+GENERATION_MODEL = "gpt-4o"
+EMBEDDING_MODEL = "text-embedding-3-small"
 
 # 🛡️ RETRIEVAL SAFEGUARDS
 MIN_SCORE_THRESHOLD = 0.25
 TOP_K = 8
 
-# ================= ENTITY MEMORY =================
-ENTITY_MEMORY = { "last_entity": None }
+# ================= MEMORY =================
+ENTITY_MEMORY = {"last_entity": None}
 ACRONYM_MEMORY = {}
-KNOWN_ACRONYMS = { "pqnk": "PQNK" }
+KNOWN_ACRONYMS = {"pqnk": "PQNK"}
 
 # =========================================
 print(f"🚀 Initializing RAG System linked to {COLLECTION_NAME}...")
 
-# Models
-# NOTE: SentenceTransformer is REMOVED. We use OpenAI for everything now.
 spell_en = SpellChecker()
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
-# Qdrant
 qdrant = QdrantClient(
     url=QDRANT_URL,
     api_key=QDRANT_API_KEY,
@@ -2136,83 +2527,141 @@ qdrant = QdrantClient(
 
 def get_embedding(text):
     """
-    Generates vector using OpenAI to match the stored data.
+    Generates embedding using OpenAI to match the stored data.
     """
     text = text.replace("\n", " ")
     return openai_client.embeddings.create(
-        input=[text], 
+        input=[text],
         model=EMBEDDING_MODEL
     ).data[0].embedding
+
 
 def normalize_query(text):
     text = text.strip()
     text = re.sub(r"\s+", " ", text)
     return text
 
+
 def detect_lang(text):
+    """
+    Simple but very reliable Urdu/English detector.
+    """
     try:
         urdu_chars = len(re.findall(r'[\u0600-\u06FF]', text))
         eng_chars = len(re.findall(r'[A-Za-z]', text))
-        if urdu_chars > eng_chars: return "ur"
+        if urdu_chars > eng_chars:
+            return "ur"
         return "en"
-    except: return "en"
+    except:
+        return "en"
+
 
 def correct_spelling(text, lang):
-    if lang != "en": return text
-    return " ".join([spell_en.correction(w) or w if w.isalpha() else w for w in text.split()])
+    """
+    Spell correction only for English.
+    """
+    if lang != "en":
+        return text
+    return " ".join([
+        (spell_en.correction(w) or w) if w.isalpha() else w
+        for w in text.split()
+    ])
+
+
+# ============ TRANSLATION (NEW) ============
+
+def translate_ur_to_en(urdu_text):
+    """
+    Translate Urdu query to English for better retrieval.
+    Uses gpt-4o-mini (fast + cheap).
+    """
+    prompt = (
+        "Translate this Urdu agricultural question into English.\n"
+        "Rules:\n"
+        "1) Keep technical terms accurate\n"
+        "2) Keep it short like a search query\n"
+        "3) Do NOT add extra information\n\n"
+        f"Urdu:\n{urdu_text}"
+    )
+
+    try:
+        r = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.0,
+            max_tokens=80
+        )
+        return r.choices[0].message.content.strip()
+    except:
+        return urdu_text
+
 
 # ============ ENTITY & ACRONYM LOGIC ============
 
 def extract_entity(text):
     tokens = re.findall(r'\b\w+\b', text.lower())
     for token in tokens:
-        if token in ["pqnk"]: return token.upper()
+        if token in ["pqnk"]:
+            return token.upper()
     return None
+
 
 def resolve_entity(text):
     entity = extract_entity(text)
     if entity:
         ENTITY_MEMORY["last_entity"] = entity
         return text
+
     if "it" in text.lower() or "its" in text.lower():
         if ENTITY_MEMORY["last_entity"]:
             return text + f" ({ENTITY_MEMORY['last_entity']})"
+
     return text
+
 
 def detect_acronym(text):
     for word in text.lower().split():
         clean = re.sub(r'\W+', '', word)
-        if clean in KNOWN_ACRONYMS: return KNOWN_ACRONYMS[clean]
+        if clean in KNOWN_ACRONYMS:
+            return KNOWN_ACRONYMS[clean]
     return None
+
 
 def expand_acronym_query(query):
     acronym = detect_acronym(query)
-    if not acronym: return query
+    if not acronym:
+        return query
+
     if any(x in query.lower() for x in ["meaning", "define", "full form"]):
         return f"what is {acronym} definition"
+
     return query
+
 
 # ============ INTELLIGENCE LAYER ============
 
 def compress_intent(query, lang):
-    prompt = (f"Rewrite as a short search intent:\n{query}" if lang == "en" 
-              else f"اس سوال کو مختصر تلاش کے ارادے میں تبدیل کریں:\n{query}")
+    prompt = (
+        f"Rewrite as a short search intent:\n{query}"
+        if lang == "en"
+        else f"اس سوال کو مختصر تلاش کے ارادے میں تبدیل کریں:\n{query}"
+    )
     try:
         r = openai_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.0, max_tokens=30
+            temperature=0.0,
+            max_tokens=30
         )
         return r.choices[0].message.content.strip()
-    except: return query
+    except:
+        return query
+
 
 def is_multi_hop_question(query):
     triggers = ["why", "how", "importance", "impact", "benefit", "significance", "role"]
     return any(t in query.lower() for t in triggers)
 
-def is_definition_question(query):
-    triggers = ["what is", "meaning", "define", "definition", "kya hai"]
-    return any(t in query.lower() for t in triggers)
 
 def normalize_intent(query):
     q = query.lower().strip()
@@ -2220,73 +2669,112 @@ def normalize_intent(query):
         (r"what is the meaning of (.+)", r"what is \1"),
         (r"define (.+)", r"what is \1"),
     ]
-    for p, r in patterns: q = re.sub(p, r, q)
+    for p, r in patterns:
+        q = re.sub(p, r, q)
     return q.strip()
+
 
 def expand_agri_query(query):
     expansions = [query]
     q = query.lower()
+
     if "pruning" in q:
-        expansions.extend([query.replace("pruning", "pruning method"), query.replace("pruning", "how to prune")])
+        expansions.extend([
+            query.replace("pruning", "pruning method"),
+            query.replace("pruning", "how to prune")
+        ])
+
     if "mango" in q:
         expansions.extend([query.replace("mango", "mango tree")])
+
     return list(set(expansions))
 
+
 def generate_paraphrases(query, lang):
-    prompt = (f"Generate 2 paraphrases:\n{query}" if lang == "en" else f"اس سوال کے دو متبادل جملے بنائیں:\n{query}")
+    prompt = (
+        f"Generate 2 paraphrases:\n{query}"
+        if lang == "en"
+        else f"اس سوال کے دو متبادل جملے بنائیں:\n{query}"
+    )
     try:
         r = openai_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.6, max_tokens=60
+            temperature=0.6,
+            max_tokens=60
         )
         lines = r.choices[0].message.content.split("\n")
         return [query] + [l.strip() for l in lines if len(l.strip()) > 5]
-    except: return [query]
+    except:
+        return [query]
 
-# ============ RETRIEVAL (WITH TERMINAL DEBUGGING) ============
 
-def retrieve_chunks(query, top_k=8):
+# ============ RETRIEVAL HELPERS (NEW) ============
+
+def language_boost_score(hit, query_lang):
+    """
+    Softly boost score if chunk language matches query language.
+    (Not a hard filter, just improves ranking.)
+    """
+    payload_lang = hit["payload"].get("language", "unknown")
+
+    if query_lang == "ur" and payload_lang == "ur":
+        return hit["score"] + 0.03
+    if query_lang == "en" and payload_lang == "en":
+        return hit["score"] + 0.03
+
+    return hit["score"]
+
+
+def retrieve_chunks_single(query, top_k=8, debug_label=""):
+    """
+    Original retrieval logic (single query).
+    Now separated so we can call it twice for hybrid retrieval.
+    """
     lang = detect_lang(query)
-    query = correct_spelling(query, lang)  
+    query = correct_spelling(query, lang)
 
-    # Expand Query
     paraphrases = generate_paraphrases(query, lang)
     paraphrases.extend(expand_agri_query(query))
+
     intent = compress_intent(query, lang)
-    if intent and intent != query: paraphrases.append(intent)
-    
+    if intent and intent != query:
+        paraphrases.append(intent)
+
     unique_queries = list(set(paraphrases))
 
-    print(f"\n🔎 Processing {len(unique_queries)} variations for: '{query}'")
+    print(f"\n🔎 {debug_label} Processing {len(unique_queries)} variations for: '{query}'")
     print("-" * 60)
 
     all_hits = []
 
     for q in unique_queries:
         try:
-            # 🟢 UPDATED: Using OpenAI Embedding instead of local model
             embedding = get_embedding(q)
-            
+
             res = qdrant.query_points(
                 collection_name=COLLECTION_NAME,
                 query=embedding,
                 limit=top_k,
                 with_payload=True
             )
-            
-            # --- DEBUG PRINT ---
+
             if res.points:
                 print(f"   Query: '{q}'")
                 for p in res.points:
                     doc = p.payload.get("doc_name", "Unknown")
                     cat = p.payload.get("category", "N/A")
-                    print(f"     • [Score: {p.score:.4f}] {doc} ({cat})")
+                    chunk_lang = p.payload.get("language", "unknown")
+
+                    print(f"     • [Score: {p.score:.4f}] {doc} ({cat}) [{chunk_lang}]")
+
                     all_hits.append({
                         "text": p.payload.get("text", ""),
                         "payload": p.payload,
-                        "score": p.score
+                        "score": p.score,
+                        "source_query": q
                     })
+
         except Exception as e:
             print(f"⚠️ Retrieval failed for '{q}': {e}")
             continue
@@ -2301,80 +2789,132 @@ def retrieve_chunks(query, top_k=8):
             unique[t] = h
 
     ranked = sorted(unique.values(), key=lambda x: x["score"], reverse=True)
-    final_chunks = [r for r in ranked if r["score"] >= MIN_SCORE_THRESHOLD][:top_k]
+
+    # Threshold filter
+    ranked = [r for r in ranked if r["score"] >= MIN_SCORE_THRESHOLD]
+
+    return ranked
+
+
+def retrieve_chunks_hybrid(original_query, top_k=8):
+    """
+    NEW:
+    If Urdu query -> translate to English and retrieve from both.
+    Then merge, dedupe, rerank, keep top_k.
+    """
+    query_lang = detect_lang(original_query)
+
+    # 1) Always retrieve using original query
+    chunks_original = retrieve_chunks_single(
+        original_query,
+        top_k=top_k,
+        debug_label="(Original)"
+    )
+
+    # 2) If Urdu, also retrieve using English translation
+    chunks_translated = []
+    translated_query = None
+
+    if query_lang == "ur":
+        translated_query = translate_ur_to_en(original_query)
+        print(f"\n🌍 Urdu → English Retrieval Query: {translated_query}")
+
+        chunks_translated = retrieve_chunks_single(
+            translated_query,
+            top_k=top_k,
+            debug_label="(Translated)"
+        )
+
+    # 3) Merge + dedupe
+    combined = chunks_original + chunks_translated
+
+    unique = {}
+    for h in combined:
+        t = h["text"]
+        if t not in unique or h["score"] > unique[t]["score"]:
+            unique[t] = h
+
+    merged = list(unique.values())
+
+    # 4) Soft language boost
+    for h in merged:
+        h["score_boosted"] = language_boost_score(h, query_lang)
+
+    # 5) Final rerank
+    merged_sorted = sorted(merged, key=lambda x: x["score_boosted"], reverse=True)
+
+    final_chunks = merged_sorted[:top_k]
 
     # --- FINAL DEBUG PRINT ---
-    print(f"✅ Final Top-{len(final_chunks)} Chunks Passed to GPT-4o:")
+    print(f"\n✅ FINAL HYBRID Top-{len(final_chunks)} Chunks Passed to GPT-4o:")
     if not final_chunks:
         print("   ❌ No chunks met the threshold.")
     else:
         for i, chunk in enumerate(final_chunks):
             doc = chunk["payload"].get("doc_name", "Unknown")
-            print(f"   {i+1}. [Score: {chunk['score']:.4f}] {doc}")
+            lang = chunk["payload"].get("language", "unknown")
+            print(f"   {i+1}. [Score: {chunk['score_boosted']:.4f}] {doc} [{lang}]")
             print(f"      Preview: \"{chunk['text'][:80].replace(chr(10), ' ')}...\"")
     print("=" * 60 + "\n")
 
     return final_chunks
 
-def multi_hop_retrieval(query):
-    print("\n🐰 Hop 1: Definition Search")
-    sub_query = generate_sub_query(query) # Using helper function
-    
-    chunks_1 = retrieve_chunks(sub_query)
-    definition = generate_answer(sub_query, chunks_1)
-    
-    # Store context
-    grounding_text = definition[:500] 
 
-    print(f"\n🐰 Hop 2: Enriched Context Search")
-    enriched_query = f"{query}. Context: {grounding_text}"
-    chunks_2 = retrieve_chunks(enriched_query)
-
-    # Combine chunks from both hops
-    combined_map = {hash(c["text"]): c for c in chunks_1 + chunks_2}
-    return list(combined_map.values())
+# ============ MULTI-HOP (UNCHANGED, BUT USE HYBRID) ============
 
 def generate_sub_query(query):
-    # Quick helper for multi-hop
     words = query.split()
     return " ".join(words[:4])
 
-# ============ ANSWERING ============
+
+def multi_hop_retrieval(query):
+    print("\n🐰 Hop 1: Definition Search")
+    sub_query = generate_sub_query(query)
+
+    chunks_1 = retrieve_chunks_hybrid(sub_query, top_k=TOP_K)
+    definition = generate_answer(sub_query, chunks_1, target_lang="en")
+
+    grounding_text = definition[:500]
+
+    print(f"\n🐰 Hop 2: Enriched Context Search")
+    enriched_query = f"{query}. Context: {grounding_text}"
+
+    chunks_2 = retrieve_chunks_hybrid(enriched_query, top_k=TOP_K)
+
+    combined_map = {hash(c["text"]): c for c in chunks_1 + chunks_2}
+    return list(combined_map.values())
+
 
 # ============ ANSWERING ============
 
 def generate_answer(original_query, chunks, target_lang="en"):
-    # 1. Safety Check
     if not chunks:
         return ("معلومات دستیاب نہیں۔" if target_lang == "ur" else "Information not available.")
 
-    # 2. Prepare Context
     context_text = ""
     for c in chunks:
         doc = c['payload'].get('doc_name', 'Unknown')
         context_text += f"Source: {doc}\nContent: {c['text']}\n\n"
 
-    # 3. Define Prompts with Formatting Instructions
     if target_lang == "ur":
         system_prompt = (
-            "You are an agricultural expert. You will receive context in English. "
-            "You must answer the user's question in clear, professional Urdu. "
+            "You are an agricultural expert. You will receive context in English and Urdu. "
+            "You must answer the user's question in clear, professional Urdu.\n\n"
             "IMPORTANT FORMATTING RULES:\n"
-            "1. Use **Urdu Numerals** (۱, ۲, ۳) for lists followed by a dash (e.g., ۱- متن).\n"
-            "2. Do NOT use English/Standard Markdown numbering (like 1. or 1-).\n"
-            "3. Do NOT mention sources inside the paragraphs.\n"
-            "4. At the very end, leave a blank line and list sources under '### حوالہ جات:'."
+            "1) Use **Urdu Numerals** (۱, ۲, ۳) for lists followed by a dash (e.g., ۱- متن)\n"
+            "2) Do NOT use English numbering (1. or 1-)\n"
+            "3) Do NOT mention sources inside paragraphs\n"
+            "4) At the very end, leave a blank line and list sources under '### حوالہ جات:'"
         )
     else:
         system_prompt = (
             "You are a helpful assistant. Answer ONLY using the provided Context. "
             "Do NOT cite sources inside the text sentences. "
-            "At the very end of your response, leave a blank line and list the unique source names under the heading '### Sources:'."
+            "At the very end, leave a blank line and list unique source names under '### Sources:'"
         )
 
-    # 4. Generate
     r = openai_client.chat.completions.create(
-        model=GENERATION_MODEL, # GPT-4o
+        model=GENERATION_MODEL,
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Context:\n{context_text}\n\nQuestion:\n{original_query}"}
@@ -2382,90 +2922,53 @@ def generate_answer(original_query, chunks, target_lang="en"):
         temperature=0.3,
         max_tokens=800
     )
+
     return r.choices[0].message.content
+
 
 # ============ PIPELINE ============
 
 def rag_pipeline(query):
     print(f"\n💬 USER QUERY: {query}")
+
     query = normalize_query(query)
     query = normalize_intent(query)
     query = resolve_entity(query)
     query = expand_acronym_query(query)
 
+    user_lang = detect_lang(query)
+
+    # Multi-hop
     if is_multi_hop_question(query):
-        chunks = multi_hop_retrieval(query) # Now returns combined chunks
-        answer = generate_answer(query, chunks)
+        chunks = multi_hop_retrieval(query)
+        answer = generate_answer(query, chunks, target_lang=("ur" if user_lang == "ur" else "en"))
         return answer
 
-    chunks = retrieve_chunks(query)
-    answer = generate_answer(query, chunks)
+    # Normal hybrid retrieval
+    chunks = retrieve_chunks_hybrid(query, top_k=TOP_K)
+    answer = generate_answer(query, chunks, target_lang=("ur" if user_lang == "ur" else "en"))
     return answer
 
-# ============ TEST ============
 
 # ============ TEST ============
 
 if __name__ == "__main__":
-    # Test queries
     tests = [
         "What is PQNK?",
         "How to prune raddish?",
-        "آلو کی کاشت کے لیے پانی", 
+        "آلو کی کاشت کے لیے پانی دینے کا بہترین طریقہ کیا ہے؟",
     ]
 
-    print("\n" + "="*50)
-    print("🤖 AGRICULTURAL RAG CHATBOT (Formatted Output)")
-    print("="*50 + "\n")
+    print("\n" + "=" * 50)
+    print("🤖 AGRICULTURAL RAG CHATBOT (Hybrid Retrieval Enabled)")
+    print("=" * 50 + "\n")
 
     for q in tests:
-        # 1. Show the Question nicely
         console.print(f"[bold cyan]USER:[/bold cyan] {q}")
-        
-        # 2. Get the raw answer
         raw_answer = rag_pipeline(q)
-        
-        # 3. Render the Markdown (Bold, Headings, Lists)
         console.print(f"[bold green]BOT:[/bold green]")
         console.print(Markdown(raw_answer))
-        
         print("-" * 50 + "\n")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

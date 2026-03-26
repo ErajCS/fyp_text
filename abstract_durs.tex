@@ -1,0 +1,99 @@
+\documentclass[12pt, a4paper]{article}
+
+% ── Packages ──────────────────────────────────────────────────────────────────
+\usepackage[margin=1in]{geometry}
+\usepackage{times}             % Times New Roman font
+\usepackage{setspace}          % Line spacing
+\usepackage{titlesec}          % Title formatting
+\usepackage{hyperref}          % Clickable links
+\usepackage{xcolor}            % Colours
+\usepackage{parskip}           % Paragraph spacing
+\usepackage{microtype}         % Better typography
+\usepackage{enumitem}          % List customisation
+
+% ── Hyperlink styling ─────────────────────────────────────────────────────────
+\hypersetup{
+    colorlinks = true,
+    urlcolor   = blue,
+    linkcolor  = black,
+    citecolor  = black
+}
+
+% ── Title customisation ───────────────────────────────────────────────────────
+\titleformat{\section}{\large\bfseries}{}{0em}{}[\titlerule]
+\titlespacing{\section}{0pt}{12pt}{6pt}
+
+% ═════════════════════════════════════════════════════════════════════════════
+\begin{document}
+
+% ── Header ───────────────────────────────────────────────────────────────────
+\begin{center}
+    {\small Dhanani School Undergraduate Research Symposium (DURS) 2026}\\[4pt]
+    {\small \textit{Stream: Artificial Intelligence \& Machine Learning}}\\[4pt]
+    {\small \textit{Sub-stream: AI for Transforming Agriculture}}\\[18pt]
+
+    {\LARGE \bfseries PQNK Knowledge Intelligence System: A RAG-Powered Expert\\[4pt]
+    Chatbot for Sustainable Natural Farming in Pakistan}\\[14pt]
+
+    {\normalsize
+        \textbf{[Author 1 Name]}, \textbf{[Author 2 Name]}, \textbf{[Author 3 Name]}, \textbf{[Author 4 Name]}\\[4pt]
+        \textit{Supervisor: [Supervisor Name]}\\[4pt]
+        \textit{Dhanani School of Science \& Engineering, Habib University}\\[4pt]
+        \textit{Industry Partner: Pakistan Agriculture Research (PAR)}\\[4pt]
+    }
+\end{center}
+
+\vspace{6pt}
+\hrule
+\vspace{14pt}
+
+% ── Abstract ─────────────────────────────────────────────────────────────────
+\section*{Abstract}
+
+\begin{onehalfspace}
+
+In Pakistan, expert agronomic knowledge critical to smallholder farmers remains
+fragmented across informal, heterogeneous media channels—including video lectures,
+WhatsApp broadcasts, social media posts, and printed documents—rendering it
+discoverable and inaccessible at scale. This research addresses that gap through the
+\textbf{PQNK Knowledge Intelligence System}, an AI-powered knowledge repository
+and expert conversational agent developed in collaboration with
+\textbf{Pakistan Agriculture Research (PAR)}.
+
+The system is centred on \textbf{Paedar Qudratti Nizam-e-Kashtari (PQNK)}, a
+sustainable natural farming methodology pioneered by Dr.~Asif Sharif, whose domain
+expertise currently reaches farmers exclusively through direct, manual consultation.
+Our goal is to automate and scale that consultation process without compromising
+the integrity of the source knowledge.
+
+The system delivers two core contributions. First, we construct a
+\textbf{multimodal knowledge base} by systematically collecting and processing the
+scattered PQNK corpus. Raw content—spanning multiple languages and formats—undergoes
+language detection, machine translation, semantic chunking, and vector embedding,
+and is indexed into a Qdrant vector store for efficient retrieval. A structured web
+application then exposes this unified repository, enabling farmers and researchers
+to perform natural-language search across the entire knowledge base from a
+single interface.
+
+Second, we deploy a \textbf{domain-restricted Retrieval-Augmented Generation (RAG)
+chatbot} that grounds every response exclusively within Dr.~Sharif's curated,
+approved corpus, eliminating the hallucination risks of general-purpose LLMs.
+Responses are delivered in both \textbf{text and synthesised audio} in Urdu and
+English, deliberately lowering literacy and accessibility barriers for rural users.
+
+The full-stack system integrates a React frontend with a Flask REST API, PostgreSQL
+for user management, and Qdrant as the vector database. Expected contributions
+include a replicable pipeline for expert knowledge digitalisation and a scalable
+model for AI-driven agricultural extension services in multilingual, low-resource
+settings.
+
+\end{onehalfspace}
+
+\vspace{12pt}
+
+% ── Keywords ─────────────────────────────────────────────────────────────────
+\noindent\textbf{Keywords:} Retrieval-Augmented Generation (RAG), Expert Knowledge Systems, Agricultural AI, Sustainable Farming, Natural Language Processing, Multimodal Knowledge Base, Large Language Models, Urdu NLP, Pakistan Agriculture.
+
+\vspace{16pt}
+
+\end{document}
