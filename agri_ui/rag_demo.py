@@ -2099,7 +2099,7 @@
 # # import os
 
 # QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
-# OPENAI_API_KEY = "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"
+# OPENAI_API_KEY = "sk-prLnIlLrGvTXV-t1z0KWHu91YHBXJwBQnqJQnvYA"
 # QDRANT_URL = os.getenv("QDRANT_URL")
 
 # COLLECTION_NAME = "pqnk_v2" 
