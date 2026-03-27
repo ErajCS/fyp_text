@@ -3,8 +3,7 @@ import { useState, useEffect } from "react";
 
 const navItems = [
   { label: "Dashboard", path: "/dashboard", icon: "📊" },
-  { label: "Resources", path: "/resources", icon: "📚" },
-  { label: "Smart Search", path: "/search", icon: "🔍" },
+  { label: "Browse Repository", path: "/browse-repository", icon: "📚" },
   { label: "AI Assistant", path: "/chatbot", icon: "🤖" },
   { label: "Profile", path: "/profile", icon: "👤" },
 ];

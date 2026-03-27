@@ -1,201 +1,285 @@
 import AdminLayout from "../../layouts/AdminLayout";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
+import useAuth from "../../hooks/useAuth";
+
+const ROLE_OPTIONS = ["seeker", "farmer", "researcher", "admin"];
+const ROLE_COLORS = {
+    seeker: "bg-gray-100 text-gray-700 border-gray-200",
+    farmer: "bg-green-100 text-green-700 border-green-200",
+    researcher: "bg-blue-100 text-blue-700 border-blue-200",
+    admin: "bg-amber-100 text-amber-700 border-amber-200",
+    superadmin: "bg-red-100 text-red-700 border-red-200",
+};
+
+function getInitials(name = "") {
+    return name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase() || "?";
+}
 
 export default function AdminDashboard() {
-    const navigate = useNavigate();
+    // ── Auth guard: validates session, redirects if not admin ──
+    const currentUser = useAuth("admin");
 
-    const stats = [
-        { title: "Total Users", value: "1,284", change: "+48 this week", icon: "👥", color: "border-blue-200 bg-blue-50/50" },
-        { title: "Pending Approvals", value: "23", change: "5 urgent", icon: "⏳", color: "border-amber-200 bg-amber-50/50" },
-        { title: "Flagged Content", value: "8", change: "2 critical", icon: "🚩", color: "border-red-200 bg-red-50/50" },
-        { title: "Resources Published", value: "342", change: "+18 this month", icon: "📚", color: "border-green-200 bg-green-50/50" },
-    ];
+    const [stats, setStats] = useState(null);
+    const [users, setUsers] = useState([]);
+    const [total, setTotal] = useState(0);
+    const [page, setPage] = useState(1);
+    const [search, setSearch] = useState("");
+    const [roleFilter, setRoleFilter] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [statsLoading, setStatsLoading] = useState(true);
+    const [roleChangeId, setRoleChangeId] = useState(null);
+    const [msg, setMsg] = useState({ text: "", type: "" });
 
-    const moderationQueue = [
-        { id: 1, title: "Wheat Irrigation Guide v3", author: "Dr. Ahmed Khan", type: "Document", status: "Pending", date: "2 hours ago", priority: "High" },
-        { id: 2, title: "Rice Pest Management Video", author: "Farmer Ali", type: "Video", status: "Under Review", date: "5 hours ago", priority: "Medium" },
-        { id: 3, title: "Cotton Harvesting Techniques", author: "AgriExpert", type: "Article", status: "Pending", date: "1 day ago", priority: "Low" },
-        { id: 4, title: "Soil Nutrient Analysis Report", author: "Lab Team", type: "Report", status: "Flagged", date: "1 day ago", priority: "High" },
-        { id: 5, title: "Sugarcane Growth Cycle PDF", author: "Prof. Hassan", type: "Document", status: "Pending", date: "2 days ago", priority: "Medium" },
-    ];
+    const PER_PAGE = 15;
 
-    const recentActivity = [
-        { action: "New user registered", detail: "farmer_ali_92 joined the platform", time: "12 min ago", icon: "🆕" },
-        { action: "Resource uploaded", detail: "Wheat_Disease_Guide.pdf by Dr. Ahmed", time: "34 min ago", icon: "📤" },
-        { action: "Content flagged", detail: "Inappropriate comment on Pest Control thread", time: "1 hr ago", icon: "🚩" },
-        { action: "User verified", detail: "agri_researcher_pk email confirmed", time: "2 hrs ago", icon: "✅" },
-        { action: "Bulk upload completed", detail: "15 lecture videos processed", time: "3 hrs ago", icon: "📦" },
-        { action: "Report generated", detail: "Weekly analytics report exported", time: "5 hrs ago", icon: "📊" },
-    ];
+    // Fetch real stats
+    useEffect(() => {
+        setStatsLoading(true);
+        fetch("/api/admin/stats", { credentials: "include" })
+            .then(r => r.json())
+            .then(d => { if (d.success) setStats(d.stats); })
+            .finally(() => setStatsLoading(false));
+    }, []);
 
-    const analyticsCards = [
-        { label: "Weekly Uploads", value: "47", trend: "+12%", icon: "📁" },
-        { label: "Active Users (7d)", value: "389", trend: "+8%", icon: "👤" },
-        { label: "Avg. Session Time", value: "14m", trend: "+3%", icon: "⏱️" },
-        { label: "Top Category", value: "Wheat", trend: "34% share", icon: "🌾" },
-    ];
+    // Fetch users whenever filters change
+    const fetchUsers = useCallback(() => {
+        setLoading(true);
+        const params = new URLSearchParams({
+            page, per_page: PER_PAGE,
+            ...(search && { search }),
+            ...(roleFilter && { role: roleFilter }),
+        });
+        fetch(`/api/admin/users?${params}`, { credentials: "include" })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) { setUsers(d.users); setTotal(d.total); }
+            })
+            .finally(() => setLoading(false));
+    }, [page, search, roleFilter]);
 
-    const getPriorityColor = (priority) => {
-        switch (priority) {
-            case "High": return "text-red-600 bg-red-50 border-red-200";
-            case "Medium": return "text-amber-600 bg-amber-50 border-amber-200";
-            case "Low": return "text-green-600 bg-green-50 border-green-200";
-            default: return "text-gray-500";
+    useEffect(() => { fetchUsers(); }, [fetchUsers]);
+
+    // Reset page on filter change
+    useEffect(() => { setPage(1); }, [search, roleFilter]);
+
+    const handleRoleChange = async (userId, newRole) => {
+        setRoleChangeId(userId);
+        try {
+            const res = await fetch(`/api/admin/users/${userId}/role`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                credentials: "include",
+                body: JSON.stringify({ role: newRole }),
+            });
+            const d = await res.json();
+            if (d.success) {
+                setMsg({ text: `Role updated to ${newRole}`, type: "success" });
+                fetchUsers();
+                // Refresh stats after role change
+                fetch("/api/admin/stats", { credentials: "include" }).then(r => r.json()).then(d => d.success && setStats(d.stats));
+            } else {
+                setMsg({ text: d.message, type: "error" });
+            }
+        } catch {
+            setMsg({ text: "Could not connect to server", type: "error" });
+        } finally {
+            setRoleChangeId(null);
+            setTimeout(() => setMsg({ text: "", type: "" }), 3000);
         }
     };
 
-    const getStatusColor = (status) => {
-        switch (status) {
-            case "Pending": return "text-amber-700 bg-amber-100";
-            case "Under Review": return "text-blue-700 bg-blue-100";
-            case "Flagged": return "text-red-700 bg-red-100";
-            default: return "text-gray-600";
-        }
-    };
+    const totalPages = Math.ceil(total / PER_PAGE);
+
+    const statCards = stats ? [
+        { title: "Total Users", value: stats.total_users, icon: "👥", sub: `+${stats.new_this_week} this week`, color: "border-blue-200 bg-blue-50/50" },
+        { title: "Verified Accounts", value: stats.verified, icon: "✅", sub: `${stats.unverified} pending`, color: "border-green-200 bg-green-50/50" },
+        { title: "Farmers", value: stats.farmers, icon: "🌾", sub: "Active farmers", color: "border-emerald-200 bg-emerald-50/50" },
+        { title: "Researchers", value: stats.researchers, icon: "🔬", sub: "Research accounts", color: "border-purple-200 bg-purple-50/50" },
+    ] : [];
 
     return (
         <AdminLayout>
+            <>
+                <style>{`
+          @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+          .fade-up   { animation: fadeUp .5s ease-out both; }
+          .fade-up-1 { animation: fadeUp .5s ease-out .1s both; }
+          .fade-up-2 { animation: fadeUp .5s ease-out .2s both; }
+        `}</style>
 
-            {/* Header */}
-            <div className="mb-10">
-                <div className="flex items-center gap-3 mb-3">
-                    <h1 className="text-4xl font-bold text-white drop-shadow-lg">Admin Dashboard</h1>
-                    <span className="px-3 py-1 rounded-lg bg-amber-50 text-amber-700 text-xs font-semibold border border-amber-200 shadow-sm">
-                        Admin
-                    </span>
-                </div>
-                <p className="text-white/70 text-base max-w-2xl drop-shadow">
-                    Manage content, moderate submissions, and monitor user activity across the PQNK AgriChat platform.
-                </p>
-            </div>
-
-            {/* Stats */}
-            <div className="grid md:grid-cols-4 gap-5 mb-10">
-                {stats.map((item, index) => (
-                    <div
-                        key={index}
-                        className={`bg-white/90 backdrop-blur-lg border ${item.color} p-6 rounded-2xl shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all duration-300`}
-                    >
-                        <div className="flex items-center justify-between mb-3">
-                            <span className="text-2xl">{item.icon}</span>
-                            <span className="text-xs text-green-600 font-semibold bg-green-100 px-2.5 py-0.5 rounded-lg">
-                                {item.change}
-                            </span>
-                        </div>
-                        <h3 className="text-2xl font-bold text-gray-800">{item.value}</h3>
-                        <p className="text-sm text-gray-500 mt-1">{item.title}</p>
+                {/* Header */}
+                <div className="fade-up mb-8">
+                    <div className="flex items-center gap-3 mb-2">
+                        <h1 className="text-3xl font-bold text-white drop-shadow-lg">Admin Dashboard</h1>
+                        <span className="px-3 py-1 rounded-lg bg-amber-50 text-amber-700 text-xs font-semibold border border-amber-200">Admin</span>
                     </div>
-                ))}
-            </div>
-
-            {/* Content Moderation Queue + User Activity */}
-            <div className="grid lg:grid-cols-3 gap-6 mb-10">
-
-                {/* Moderation Queue — 2 cols */}
-                <div className="lg:col-span-2 bg-white/90 backdrop-blur-lg border border-gray-200/50 rounded-2xl shadow-xl p-6">
-                    <div className="flex items-center justify-between mb-5">
-                        <h2 className="text-lg font-semibold text-gray-800">📋 Content Moderation Queue</h2>
-                        <span className="text-xs text-amber-700 bg-amber-100 px-3 py-1 rounded-lg font-medium">
-                            {moderationQueue.length} items
-                        </span>
-                    </div>
-
-                    <div className="space-y-2">
-                        {moderationQueue.map((item) => (
-                            <div
-                                key={item.id}
-                                className="flex items-center justify-between p-3.5 rounded-xl bg-gray-50 border border-gray-100 hover:bg-white hover:shadow-md transition group"
-                            >
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2.5 mb-1">
-                                        <h4 className="font-semibold text-sm text-gray-800 truncate">{item.title}</h4>
-                                        <span className={`text-[10px] px-2 py-0.5 rounded-md border font-bold uppercase ${getPriorityColor(item.priority)}`}>
-                                            {item.priority}
-                                        </span>
-                                    </div>
-                                    <p className="text-xs text-gray-400">
-                                        by {item.author} · {item.type} · {item.date}
-                                    </p>
-                                </div>
-
-                                <div className="flex items-center gap-2.5 ml-4">
-                                    <span className={`text-xs px-2.5 py-1 rounded-lg font-medium ${getStatusColor(item.status)}`}>
-                                        {item.status}
-                                    </span>
-                                    <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition">
-                                        <button className="w-7 h-7 rounded-lg bg-green-100 text-green-600 hover:bg-green-200 transition flex items-center justify-center text-sm" title="Approve">
-                                            ✓
-                                        </button>
-                                        <button className="w-7 h-7 rounded-lg bg-red-100 text-red-500 hover:bg-red-200 transition flex items-center justify-center text-sm" title="Reject">
-                                            ✕
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                    <p className="text-white/60 text-sm">Monitor platform activity and manage user accounts across the PQNK AgriChat system.</p>
                 </div>
 
-                {/* User Activity Feed */}
-                <div className="bg-white/90 backdrop-blur-lg border border-gray-200/50 rounded-2xl shadow-xl p-6">
-                    <h2 className="text-lg font-semibold mb-5 text-gray-800">🟢 Live Activity</h2>
-
-                    <div className="space-y-3.5">
-                        {recentActivity.map((item, index) => (
-                            <div key={index} className="flex gap-3 items-start">
-                                <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center text-sm flex-shrink-0 mt-0.5">
-                                    {item.icon}
-                                </div>
-                                <div className="min-w-0">
-                                    <p className="text-sm font-medium text-gray-700">{item.action}</p>
-                                    <p className="text-xs text-gray-400 truncate">{item.detail}</p>
-                                    <p className="text-[10px] text-green-600/70 mt-0.5">{item.time}</p>
-                                </div>
-                            </div>
-                        ))}
+                {/* Feedback message */}
+                {msg.text && (
+                    <div className={`mb-5 px-4 py-3 rounded-xl text-sm font-medium ${msg.type === "success" ? "bg-green-500/20 border border-green-400/30 text-green-300" : "bg-red-500/20 border border-red-400/30 text-red-300"}`}>
+                        {msg.type === "success" ? "✅ " : "❌ "}{msg.text}
                     </div>
-                </div>
-            </div>
+                )}
 
-            {/* Analytics Snapshot */}
-            <div className="mb-10">
-                <h2 className="text-lg font-semibold mb-5 text-white drop-shadow">📈 Analytics Snapshot</h2>
-                <div className="grid md:grid-cols-4 gap-4">
-                    {analyticsCards.map((item, index) => (
-                        <div
-                            key={index}
-                            className="bg-white/90 backdrop-blur-lg border border-gray-200/50 p-5 rounded-2xl shadow-lg hover:shadow-xl transition"
-                        >
-                            <div className="flex items-center justify-between mb-2.5">
-                                <span className="text-xl">{item.icon}</span>
-                                <span className="text-xs text-green-600 font-medium">{item.trend}</span>
+                {/* Stats — real data */}
+                <div className="fade-up-1 grid md:grid-cols-4 gap-5 mb-8">
+                    {statsLoading ? (
+                        [...Array(4)].map((_, i) => (
+                            <div key={i} className="bg-white/90 border border-gray-200 rounded-2xl p-6 animate-pulse">
+                                <div className="h-6 bg-gray-200 rounded mb-3 w-1/2" />
+                                <div className="h-8 bg-gray-200 rounded mb-2" />
+                                <div className="h-4 bg-gray-100 rounded w-3/4" />
                             </div>
-                            <h3 className="text-xl font-bold text-gray-800">{item.value}</h3>
-                            <p className="text-sm text-gray-500 mt-1">{item.label}</p>
+                        ))
+                    ) : statCards.map((item, i) => (
+                        <div key={i} className={`bg-white/90 backdrop-blur-lg border ${item.color} p-6 rounded-2xl shadow-xl hover:shadow-2xl hover:scale-[1.02] transition-all duration-300`}>
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="text-2xl">{item.icon}</span>
+                                <span className="text-xs text-green-600 font-semibold bg-green-100 px-2.5 py-0.5 rounded-lg">{item.sub}</span>
+                            </div>
+                            <h3 className="text-3xl font-bold text-gray-800">{item.value.toLocaleString()}</h3>
+                            <p className="text-sm text-gray-500 mt-1">{item.title}</p>
                         </div>
                     ))}
                 </div>
-            </div>
 
-            {/* Quick Actions */}
-            <div className="bg-gradient-to-r from-green-600 to-emerald-700 p-6 rounded-2xl shadow-2xl">
-                <h2 className="text-lg font-bold mb-5 text-white">⚡ Quick Actions</h2>
-                <div className="flex flex-wrap gap-3">
-                    <button onClick={() => navigate("/admin/moderation")} className="bg-white/20 text-white border border-white/30 px-5 py-2.5 rounded-xl font-semibold hover:bg-white/30 hover:scale-[1.02] transition-all flex items-center gap-2 text-sm backdrop-blur">
-                        🛡️ Review Queue
-                    </button>
-                    <button onClick={() => navigate("/admin/users")} className="bg-white/20 text-white border border-white/30 px-5 py-2.5 rounded-xl font-semibold hover:bg-white/30 hover:scale-[1.02] transition-all flex items-center gap-2 text-sm backdrop-blur">
-                        👥 User Management
-                    </button>
-                    <button className="bg-white/20 text-white border border-white/30 px-5 py-2.5 rounded-xl font-semibold hover:bg-white/30 hover:scale-[1.02] transition-all flex items-center gap-2 text-sm backdrop-blur">
-                        📚 Publish Resource
-                    </button>
-                    <button onClick={() => navigate("/chatbot")} className="bg-gradient-to-r from-amber-400 to-yellow-500 text-white px-5 py-2.5 rounded-xl font-semibold hover:scale-[1.02] transition-all flex items-center gap-2 text-sm shadow-lg shadow-amber-400/30">
-                        🤖 AI Assistant
-                    </button>
+                {/* User Management Table */}
+                <div className="fade-up-2 bg-white/90 backdrop-blur-lg border border-gray-200/50 rounded-2xl shadow-xl p-6">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                        <div>
+                            <h2 className="text-lg font-semibold text-gray-800">👥 User Management</h2>
+                            <p className="text-xs text-gray-400 mt-1">{total.toLocaleString()} users total</p>
+                        </div>
+                        <div className="flex gap-3 w-full sm:w-auto">
+                            <input
+                                type="text"
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                placeholder="Search name or email…"
+                                className="flex-1 sm:w-52 px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-400/30 focus:border-green-400"
+                            />
+                            <select
+                                value={roleFilter}
+                                onChange={e => setRoleFilter(e.target.value)}
+                                className="px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-400/30"
+                            >
+                                <option value="">All Roles</option>
+                                {["seeker", "farmer", "researcher", "admin", "superadmin"].map(r => (
+                                    <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    {loading ? (
+                        <div className="space-y-2">
+                            {[...Array(8)].map((_, i) => (
+                                <div key={i} className="h-14 bg-gray-100 rounded-xl animate-pulse" />
+                            ))}
+                        </div>
+                    ) : users.length === 0 ? (
+                        <div className="text-center py-12 text-gray-400">
+                            <p className="text-4xl mb-3">🔍</p>
+                            <p className="font-medium">No users found</p>
+                            <p className="text-xs mt-1">Try adjusting your search or filter</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-1.5">
+                            {users.map(user => (
+                                <div
+                                    key={user.id}
+                                    className="flex items-center justify-between p-3.5 rounded-xl bg-gray-50 border border-gray-100 hover:bg-white hover:shadow-md transition group"
+                                >
+                                    {/* User info */}
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center text-sm font-bold text-white flex-shrink-0">
+                                            {getInitials(user.name)}
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-sm font-semibold text-gray-800">{user.name}</p>
+                                                {user.is_verified
+                                                    ? <span className="w-3.5 h-3.5 text-green-500 text-xs" title="Verified">✓</span>
+                                                    : <span className="w-3.5 h-3.5 text-amber-400 text-xs" title="Not verified">⏳</span>
+                                                }
+                                            </div>
+                                            <p className="text-xs text-gray-400">{user.email} · Joined {user.created_at}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Role selector */}
+                                    <div className="flex items-center gap-3 ml-4">
+                                        <select
+                                            value={user.role}
+                                            disabled={roleChangeId === user.id}
+                                            onChange={e => handleRoleChange(user.id, e.target.value)}
+                                            className={`text-xs px-2.5 py-1.5 rounded-lg border font-semibold cursor-pointer focus:outline-none transition ${ROLE_COLORS[user.role] || "bg-gray-100 text-gray-600"} disabled:opacity-50`}
+                                        >
+                                            {ROLE_OPTIONS.map(r => (
+                                                <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                                            ))}
+                                        </select>
+                                        {roleChangeId === user.id && (
+                                            <span className="text-xs text-gray-400 animate-pulse">Saving…</span>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div className="flex items-center justify-between mt-5 pt-4 border-t border-gray-100">
+                            <p className="text-xs text-gray-400">
+                                Showing {((page - 1) * PER_PAGE) + 1}–{Math.min(page * PER_PAGE, total)} of {total.toLocaleString()}
+                            </p>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                                    disabled={page === 1}
+                                    className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition"
+                                >
+                                    ← Prev
+                                </button>
+                                <span className="px-3 py-1.5 text-xs text-gray-500">
+                                    {page} / {totalPages}
+                                </span>
+                                <button
+                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={page === totalPages}
+                                    className="px-3 py-1.5 rounded-lg border border-gray-200 text-xs text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition"
+                                >
+                                    Next →
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
-            </div>
 
+                {/* Role Summary */}
+                {stats && (
+                    <div className="mt-6 bg-gradient-to-r from-green-600 to-emerald-700 p-6 rounded-2xl shadow-2xl">
+                        <h2 className="text-base font-semibold text-white mb-4">📊 Platform Role Breakdown</h2>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {[
+                                { label: "Seekers / Users", value: stats.seekers, icon: "👤" },
+                                { label: "Farmers", value: stats.farmers, icon: "🌾" },
+                                { label: "Researchers", value: stats.researchers, icon: "🔬" },
+                                { label: "Admins", value: stats.admins, icon: "🛡️" },
+                            ].map((r, i) => (
+                                <div key={i} className="bg-white/15 border border-white/20 rounded-xl p-4 text-center backdrop-blur">
+                                    <span className="text-2xl">{r.icon}</span>
+                                    <p className="text-2xl font-bold text-white mt-1">{r.value}</p>
+                                    <p className="text-xs text-white/60 mt-0.5">{r.label}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </>
         </AdminLayout>
     );
 }

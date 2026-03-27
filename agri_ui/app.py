@@ -455,13 +455,24 @@ import edge_tts
 import uuid
 import os
 import re
+
+# ── Load .env FIRST — before importing rag_demo which reads OPENAI_API_KEY ──
+try:
+    from dotenv import load_dotenv
+    _env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env')
+    load_dotenv(_env_path, override=True)
+    print("✅ .env loaded")
+except ImportError:
+    pass
+
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, login_user, login_required, logout_user, UserMixin, current_user
-from rag_demo import rag_pipeline, detect_lang 
+from rag_demo import rag_pipeline, detect_lang
 from datetime import datetime
+
 
 # =======================
 # FLASK APP CONFIG
@@ -508,12 +519,45 @@ class User(db.Model, UserMixin):
     otp_expiry = db.Column(db.DateTime)
     dark_mode = db.Column(db.Boolean, default=False)
 
+
+class Resource(db.Model):
+    """Repository item: document, image, or video."""
+    __tablename__ = 'resources'
+    id          = db.Column(db.Integer, primary_key=True)
+    title       = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text)
+    category    = db.Column(db.String(100), nullable=False, default='General')
+    keywords    = db.Column(db.String(500))          # comma-separated
+    file_type   = db.Column(db.String(20), nullable=False)  # document / image / video
+    filename    = db.Column(db.String(255))          # stored filename on disk (null for video-link-only)
+    original_name = db.Column(db.String(255))        # original upload name
+    video_link  = db.Column(db.String(512))          # YouTube / external link (videos only)
+    uploaded_by = db.Column(db.Integer, db.ForeignKey('users.user_id'))
+    created_at  = db.Column(db.DateTime, default=datetime.utcnow)
+    uploader    = db.relationship('User', foreign_keys=[uploaded_by])
+
+
+# Directory for uploaded files
+UPLOAD_DIR = os.path.join(BASE_DIR, '..', 'uploads')
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+ALLOWED_DOCS   = {'pdf', 'doc', 'docx', 'txt', 'pptx', 'xlsx'}
+ALLOWED_IMAGES = {'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'}
+ALLOWED_VIDEOS = {'mp4', 'webm', 'mov', 'avi', 'mkv'}
+
+def allowed_file(filename, file_type):
+    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+    if file_type == 'document': return ext in ALLOWED_DOCS
+    if file_type == 'image':    return ext in ALLOWED_IMAGES
+    if file_type == 'video':    return ext in ALLOWED_VIDEOS
+    return False
+
+
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
-# =======================
-# HELPER: TEXT TO SPEECH
+
+
 # =======================
 async def generate_speech_file(text, voice, output_path):
     communicate = edge_tts.Communicate(text, voice)
@@ -595,9 +639,15 @@ def chatbot():
 @app.route("/get_response", methods=["POST"])
 @login_required
 def get_response():
-    user_message = request.json.get("msg")
-    ai_response = rag_pipeline(user_message)
-    return jsonify({"response": ai_response})
+    user_message = request.json.get("msg", "").strip()
+    if not user_message:
+        return jsonify({"response": "Please enter a message."}), 400
+    try:
+        ai_response = rag_pipeline(user_message)
+        return jsonify({"response": ai_response})
+    except Exception as e:
+        print(f"❌ RAG pipeline error: {e}")
+        return jsonify({"response": "⚠️ Sorry, I encountered an error processing your request. Please try again."}), 500
 
 @app.route("/generate_audio", methods=["POST"])
 @login_required
@@ -779,6 +829,7 @@ def send_otp_both(email: str, phone: str, otp_code: str, name: str = "") -> dict
         ok, _ = send_otp_email(email, otp_code, name)
         results["email"] = ok
 
+        
     def _sms():
         if phone:
             ok, _ = send_otp_sms(phone, otp_code, name)
@@ -1041,7 +1092,283 @@ def api_logout():
     return jsonify({"success": True, "message": "Logged out"})
 
 
+# =======================
+# ADMIN JSON API
+# =======================
+
+def require_role(*roles):
+    """Decorator: only allow users whose role is in `roles`."""
+    from functools import wraps
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            if not current_user.is_authenticated:
+                return jsonify({"success": False, "message": "Authentication required"}), 401
+            if current_user.role not in roles:
+                return jsonify({"success": False, "message": "Forbidden: insufficient permissions"}), 403
+            return fn(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
+@app.route("/api/admin/stats", methods=["GET"])
+@login_required
+@require_role("admin", "superadmin")
+def api_admin_stats():
+    """Real-time platform statistics from PostgreSQL."""
+    total_users   = User.query.count()
+    verified      = User.query.filter_by(is_verified=True).count()
+    unverified    = User.query.filter_by(is_verified=False).count()
+    admins        = User.query.filter(User.role.in_(["admin", "superadmin"])).count()
+    farmers       = User.query.filter_by(role="farmer").count()
+    seekers       = User.query.filter_by(role="seeker").count()
+    researchers   = User.query.filter_by(role="researcher").count()
+    # Recent registrations in last 7 days
+    from datetime import timedelta
+    week_ago      = datetime.utcnow() - timedelta(days=7)
+    new_this_week = User.query.filter(User.created_at >= week_ago).count()
+
+    return jsonify({
+        "success": True,
+        "stats": {
+            "total_users":    total_users,
+            "verified":       verified,
+            "unverified":     unverified,
+            "admins":         admins,
+            "farmers":        farmers,
+            "seekers":        seekers,
+            "researchers":    researchers,
+            "new_this_week":  new_this_week,
+        }
+    })
+
+
+@app.route("/api/admin/users", methods=["GET"])
+@login_required
+@require_role("admin", "superadmin")
+def api_admin_users():
+    """
+    Paginated user list with optional filters.
+    Query params: page (default 1), per_page (default 20), role, search
+    """
+    page     = int(request.args.get("page", 1))
+    per_page = min(int(request.args.get("per_page", 20)), 100)
+    role     = request.args.get("role", "")
+    search   = request.args.get("search", "").strip()
+
+    query = User.query
+    if role:
+        query = query.filter_by(role=role)
+    if search:
+        query = query.filter(
+            (User.name.ilike(f"%{search}%")) | (User.email.ilike(f"%{search}%"))
+        )
+
+    total   = query.count()
+    users   = query.order_by(User.created_at.desc()) \
+                   .offset((page - 1) * per_page).limit(per_page).all()
+
+    return jsonify({
+        "success": True,
+        "total":   total,
+        "page":    page,
+        "per_page": per_page,
+        "users": [{
+            "id":          u.id,
+            "name":        u.name,
+            "email":       u.email,
+            "phone":       u.phone or "",
+            "role":        u.role,
+            "is_verified": u.is_verified,
+            "created_at":  u.created_at.strftime("%b %d, %Y") if u.created_at else "—",
+        } for u in users]
+    })
+
+
+@app.route("/api/admin/users/<int:user_id>/role", methods=["PATCH"])
+@login_required
+@require_role("admin", "superadmin")
+def api_admin_change_role(user_id):
+    """Change a user's role. Super admins can promote to admin; admins cannot."""
+    data     = request.get_json() or {}
+    new_role = data.get("role", "").strip().lower()
+    VALID    = {"seeker", "farmer", "researcher", "admin", "superadmin"}
+    if new_role not in VALID:
+        return jsonify({"success": False, "message": f"Invalid role: {new_role}"}), 400
+
+    # Only superadmin can grant admin/superadmin role
+    if new_role in {"admin", "superadmin"} and current_user.role != "superadmin":
+        return jsonify({"success": False, "message": "Only Super Admin can assign admin roles"}), 403
+
+    target = User.query.get(user_id)
+    if not target:
+        return jsonify({"success": False, "message": "User not found"}), 404
+    if target.id == current_user.id:
+        return jsonify({"success": False, "message": "Cannot change your own role"}), 400
+
+    target.role = new_role
+    db.session.commit()
+    return jsonify({"success": True, "message": f"Role updated to {new_role}", "user_id": user_id})
+
+
+@app.route("/api/admin/users/<int:user_id>", methods=["DELETE"])
+@login_required
+@require_role("superadmin")
+def api_admin_delete_user(user_id):
+    """Super admin only: hard delete a user account."""
+    target = User.query.get(user_id)
+    if not target:
+        return jsonify({"success": False, "message": "User not found"}), 404
+    if target.id == current_user.id:
+        return jsonify({"success": False, "message": "Cannot delete your own account"}), 400
+    db.session.delete(target)
+    db.session.commit()
+    return jsonify({"success": True, "message": "User deleted"})
+
+
+# =======================
+# REPOSITORY API
+# =======================
+
+def resource_to_dict(r):
+    return {
+        "id":            r.id,
+        "title":         r.title,
+        "description":   r.description or "",
+        "category":      r.category,
+        "keywords":      r.keywords or "",
+        "file_type":     r.file_type,
+        "filename":      r.filename or "",
+        "original_name": r.original_name or "",
+        "video_link":    r.video_link or "",
+        "uploaded_by":   r.uploader.name if r.uploader else "Unknown",
+        "created_at":    r.created_at.strftime("%b %d, %Y") if r.created_at else "",
+    }
+
+
+@app.route("/api/repository", methods=["GET"])
+@login_required
+def api_repo_list():
+    """List repository resources with optional filters."""
+    q         = request.args.get("q", "").strip()
+    category  = request.args.get("category", "")
+    file_type = request.args.get("file_type", "")
+    page      = int(request.args.get("page", 1))
+    per_page  = min(int(request.args.get("per_page", 20)), 100)
+
+    query = Resource.query
+    if q:
+        query = query.filter(
+            (Resource.title.ilike(f"%{q}%")) |
+            (Resource.keywords.ilike(f"%{q}%")) |
+            (Resource.description.ilike(f"%{q}%"))
+        )
+    if category:
+        query = query.filter_by(category=category)
+    if file_type:
+        query = query.filter_by(file_type=file_type)
+
+    total     = query.count()
+    resources = query.order_by(Resource.created_at.desc()) \
+                     .offset((page - 1) * per_page).limit(per_page).all()
+
+    # Get unique categories for filter dropdown
+    cats = db.session.query(Resource.category).distinct().all()
+    categories = sorted([c[0] for c in cats if c[0]])
+
+    return jsonify({
+        "success":    True,
+        "total":      total,
+        "page":       page,
+        "per_page":   per_page,
+        "categories": categories,
+        "resources":  [resource_to_dict(r) for r in resources],
+    })
+
+
+@app.route("/api/repository/upload", methods=["POST"])
+@login_required
+@require_role("admin", "superadmin")
+def api_repo_upload():
+    """Upload a new resource (multipart form)."""
+    import werkzeug.utils as wu
+
+    title       = request.form.get("title", "").strip()
+    description = request.form.get("description", "").strip()
+    category    = request.form.get("category", "General").strip()
+    keywords    = request.form.get("keywords", "").strip()
+    file_type   = request.form.get("file_type", "").strip().lower()  # document / image / video
+    video_link  = request.form.get("video_link", "").strip()
+
+    if not title:
+        return jsonify({"success": False, "message": "Title is required"}), 400
+    if file_type not in ("document", "image", "video"):
+        return jsonify({"success": False, "message": "file_type must be document, image, or video"}), 400
+
+    saved_filename = None
+    original_name  = None
+
+    file = request.files.get("file")
+    if file and file.filename:
+        original_name = file.filename
+        if not allowed_file(original_name, file_type):
+            return jsonify({"success": False, "message": f"File type not allowed for {file_type}"}), 400
+        safe_name      = wu.secure_filename(original_name)
+        unique_name    = f"{uuid.uuid4().hex}_{safe_name}"
+        dest           = os.path.join(UPLOAD_DIR, unique_name)
+        file.save(dest)
+        saved_filename = unique_name
+
+    if file_type == "video" and not video_link:
+        return jsonify({"success": False, "message": "Video link is required for video resources"}), 400
+
+    resource = Resource(
+        title         = title,
+        description   = description,
+        category      = category,
+        keywords      = keywords,
+        file_type     = file_type,
+        filename      = saved_filename,
+        original_name = original_name,
+        video_link    = video_link if file_type == "video" else None,
+        uploaded_by   = current_user.id,
+    )
+    db.session.add(resource)
+    db.session.commit()
+    return jsonify({"success": True, "message": "Resource uploaded", "resource": resource_to_dict(resource)}), 201
+
+
+@app.route("/api/repository/<int:resource_id>", methods=["DELETE"])
+@login_required
+@require_role("admin", "superadmin")
+def api_repo_delete(resource_id):
+    """Delete a resource and optionally its uploaded file."""
+    resource = db.session.get(Resource, resource_id)
+    if not resource:
+        return jsonify({"success": False, "message": "Resource not found"}), 404
+
+    # Delete physical file if it exists
+    if resource.filename:
+        file_path = os.path.join(UPLOAD_DIR, resource.filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+    db.session.delete(resource)
+    db.session.commit()
+    return jsonify({"success": True, "message": "Resource deleted"})
+
+
+@app.route("/api/repository/file/<path:filename>")
+@login_required
+def api_repo_serve_file(filename):
+    """Serve an uploaded file."""
+    from flask import send_from_directory
+    return send_from_directory(UPLOAD_DIR, filename)
+
+
+
 # Make login_required return JSON 401 instead of redirecting for API calls
+
 @login_manager.unauthorized_handler
 def unauthorized():
     if request.path.startswith("/api/") or request.is_json or request.headers.get("X-Requested-With") == "XMLHttpRequest":

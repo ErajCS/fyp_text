@@ -4,15 +4,31 @@ const navItems = [
     { label: "Dashboard", path: "/admin-dashboard", icon: "📊" },
     { label: "Content Management", path: "/admin-dashboard/content", icon: "📝" },
     { label: "User Management", path: "/admin-dashboard/users", icon: "👥" },
-    { label: "Moderation Queue", path: "/admin-dashboard/moderation", icon: "🛡️" },
     { label: "Analytics", path: "/admin-dashboard/analytics", icon: "📈" },
     { label: "AI Assistant", path: "/chatbot", icon: "🤖" },
-    { label: "Profile", path: "/admin-dashboard/profile", icon: "👤" },
+    { label: "Profile", path: "/profile", icon: "👤" },
 ];
+
+function getInitials(name = "") {
+    return name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase() || "A";
+}
 
 export default function AdminLayout({ children }) {
     const navigate = useNavigate();
     const location = useLocation();
+
+    // Read real user from localStorage (set by login)
+    let user = { name: "Admin", email: "", role: "admin" };
+    try { user = JSON.parse(localStorage.getItem("user") || "{}") || user; } catch { }
+
+    const handleLogout = async () => {
+        try {
+            await fetch("/api/logout", { method: "POST", credentials: "include" });
+        } finally {
+            localStorage.removeItem("user");
+            navigate("/login");
+        }
+    };
 
     return (
         <div
@@ -26,7 +42,7 @@ export default function AdminLayout({ children }) {
         >
             <div className="absolute inset-0 bg-gradient-to-br from-green-950/60 via-emerald-900/50 to-green-950/70 z-0" />
 
-            {/* ── SIDEBAR — dark emerald ── */}
+            {/* ── SIDEBAR ── */}
             <div className="w-[260px] bg-gradient-to-b from-emerald-900 to-green-950 backdrop-blur-xl shadow-2xl z-10 flex flex-col border-r border-emerald-700/30 relative">
 
                 <div className="px-6 pt-6 pb-5 border-b border-white/10">
@@ -49,8 +65,8 @@ export default function AdminLayout({ children }) {
                                 key={item.path}
                                 onClick={() => navigate(item.path)}
                                 className={`px-4 py-2.5 rounded-xl cursor-pointer transition-all duration-200 flex items-center gap-3 ${isActive
-                                        ? "bg-white/15 text-white shadow-lg border border-white/10"
-                                        : "text-white/60 hover:bg-white/10 hover:text-white"
+                                    ? "bg-white/15 text-white shadow-lg border border-white/10"
+                                    : "text-white/60 hover:bg-white/10 hover:text-white"
                                     }`}
                             >
                                 <span className="text-base">{item.icon}</span>
@@ -60,35 +76,41 @@ export default function AdminLayout({ children }) {
                     })}
                 </nav>
 
+                {/* Real user info + logout */}
                 <div className="px-5 py-4 border-t border-white/10">
-                    <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-amber-400/20 flex items-center justify-center text-amber-300 text-xs font-bold">A</div>
-                        <div>
-                            <p className="text-sm font-semibold text-white">Admin User</p>
-                            <p className="text-[11px] text-emerald-400/60">Administrator</p>
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center text-emerald-950 text-xs font-bold shadow-md flex-shrink-0">
+                            {getInitials(user.name)}
+                        </div>
+                        <div className="min-w-0">
+                            <p className="text-sm font-semibold text-white truncate">{user.name || "Admin"}</p>
+                            <p className="text-[10px] text-amber-400/60 font-medium truncate">{user.email || "Administrator"}</p>
                         </div>
                     </div>
+                    <button
+                        onClick={handleLogout}
+                        className="w-full py-2 rounded-xl bg-red-500/15 border border-red-400/20 text-red-300 text-xs font-semibold hover:bg-red-500/25 transition"
+                    >
+                        🚪 Sign Out
+                    </button>
                 </div>
             </div>
 
             {/* ── MAIN CONTENT ── */}
             <div className="flex-1 flex flex-col min-w-0 relative z-10">
-
                 <div className="flex items-center justify-between px-8 py-3 bg-emerald-950/70 backdrop-blur-xl border-b border-white/10 flex-shrink-0">
                     <div className="flex items-center gap-1">
-                        {["Home", "About Us", "Resources", "Contact Us"].map((link, i) => (
-                            <button key={i} className="px-3 py-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-all text-xs font-medium">{link}</button>
-                        ))}
+                        <button onClick={() => navigate("/dashboard")} className="px-3 py-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-all text-xs font-medium">🏠 Home</button>
+                        <button onClick={() => navigate("/chatbot")} className="px-3 py-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-all text-xs font-medium">🤖 AI Chat</button>
                     </div>
                     <div className="flex items-center gap-3">
-                        <input type="text" placeholder="Search users, content…" className="w-[240px] px-4 py-2 rounded-xl bg-white/10 border border-white/15 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-green-400/40 text-sm transition" />
-                        <div className="relative cursor-pointer">
-                            <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center hover:bg-white/20 transition text-sm">🔔</div>
-                            <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 rounded-full text-[8px] flex items-center justify-center font-bold text-white">7</div>
+                        <div className="px-2.5 py-1 rounded-lg bg-amber-400/15 border border-amber-400/25 text-amber-300 text-xs font-semibold">
+                            🛡️ Admin
                         </div>
-                        <div className="px-2.5 py-1 rounded-lg bg-amber-400/15 border border-amber-400/25 text-amber-300 text-xs font-semibold">Admin</div>
-                        <button className="px-2 py-1 rounded-lg bg-white/10 border border-white/15 text-white/70 text-xs font-medium hover:bg-white/20 transition">اردو</button>
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 text-emerald-950 flex items-center justify-center font-bold text-xs shadow-lg cursor-pointer">🛡️</div>
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 text-emerald-950 flex items-center justify-center font-bold text-xs shadow-lg cursor-pointer"
+                            onClick={() => navigate("/profile")}>
+                            {getInitials(user.name)}
+                        </div>
                     </div>
                 </div>
 

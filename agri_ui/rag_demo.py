@@ -2099,7 +2099,7 @@
 # # import os
 
 # QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
-# OPENAI_API_KEY = "sk-prLnIlLrGvTXV-t1z0KWHu91YHBXJwBQnqJQnvYA"
+
 # QDRANT_URL = os.getenv("QDRANT_URL")
 
 # COLLECTION_NAME = "pqnk_v2" 
@@ -2493,7 +2493,14 @@ QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 QDRANT_URL = os.getenv("QDRANT_URL")
 
 # ⚠️ API key must be in .env — never hardcode here!
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+# Falls back to OPENAI_API_KEY_2 if the primary key is unavailable
+_primary_key = os.getenv("OPENAI_API_KEY", "")
+_fallback_key = os.getenv("OPENAI_API_KEY_2", "")
+OPENAI_API_KEY = _primary_key if (_primary_key and not _primary_key.startswith("sk-proj-9eio")) else _fallback_key
+if not OPENAI_API_KEY:
+    print("❌ WARNING: No valid OPENAI_API_KEY found in .env — chatbot will not work")
+else:
+    print(f"✅ OpenAI key loaded (ends: ...{OPENAI_API_KEY[-6:]}")
 
 
 COLLECTION_NAME = "pqnk_v2"
@@ -2559,13 +2566,32 @@ def detect_lang(text):
 def correct_spelling(text, lang):
     """
     Spell correction only for English.
+    Skips acronyms (all-caps), known technical terms (PQNK etc.),
+    and short words (≤2 chars) to prevent corruption.
     """
     if lang != "en":
         return text
-    return " ".join([
-        (spell_en.correction(w) or w) if w.isalpha() else w
-        for w in text.split()
-    ])
+
+    # Build a set of protected words: known acronyms + their uppercase forms
+    protected = set()
+    for k, v in KNOWN_ACRONYMS.items():
+        protected.add(k.lower())
+        protected.add(v.lower())
+    # add common agricultural terms that spellcheck might mangle
+    protected.update({"pqnk", "qdrant", "agri", "pak", "sindh", "punjab",
+                      "kharif", "rabi", "npk", "urea", "dap"})
+
+    corrected = []
+    for w in text.split():
+        lower_w = w.lower()
+        # Skip: short words, ALL-CAPS acronyms, known protected terms
+        if len(w) <= 2 or w.isupper() or lower_w in protected:
+            corrected.append(w)
+        elif w.isalpha():
+            corrected.append(spell_en.correction(w) or w)
+        else:
+            corrected.append(w)
+    return " ".join(corrected)
 
 
 # ============ TRANSLATION (NEW) ============

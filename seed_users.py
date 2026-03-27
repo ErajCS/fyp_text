@@ -19,9 +19,11 @@ def seed_users():
 
     users = [
         ("Dr. Asif Sharif", "admin@pqnk.com", "admin123", "admin"),
-        ("Ali Farmer", "ali@farmer.com", "farmer123", "seeker"),
+        ("System Owner", "superadmin@pqnk.com", "super123", "superadmin"),
+        ("Ali Farmer", "ali@farmer.com", "farmer123", "farmer"),
         ("Sara Student", "sara@uni.edu", "student123", "seeker")
     ]
+
 
     print("🌱 Seeding Users...")
     for name, email, password, role in users:
@@ -30,10 +32,13 @@ def seed_users():
         
         try:
             cur.execute("""
-                INSERT INTO users (full_name, email, password_hash, role)
-                VALUES (%s, %s, %s, %s)
+                INSERT INTO users (full_name, email, password_hash, role, is_verified)
+                VALUES (%s, %s, %s, %s, TRUE)
+                ON CONFLICT (email) DO UPDATE
+                  SET full_name=EXCLUDED.full_name, role=EXCLUDED.role, is_verified=TRUE
             """, (name, email, hashed, role))
-            print(f"✅ Added {role}: {email}")
+            print(f"✅ Upserted {role}: {email}")
+
         except psycopg2.errors.UniqueViolation:
             print(f"⚠️ User {email} already exists. Skipping.")
             conn.rollback()

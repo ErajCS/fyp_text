@@ -21,7 +21,7 @@
 
 **Paedar Qudratti Nizam-e-Kashtari (PQNK)** is a pioneering sustainable natural farming methodology developed by **Dr. Asif Sharif** in collaboration with Pakistan Agriculture Research. It eliminates synthetic chemicals in favour of natural, soil-health-first techniques — a transformative alternative for Pakistan's smallholder farming community.
 
-The problem: **Dr. Sharif's knowledge currently lives in scattered, informal media** — YouTube lectures, WhatsApp broadcasts, printed Urdu documents, social media posts. Farmers only access it through direct, manual consultation with Dr. Sharif himself. This system **cannot scale**.
+The problem: **Dr. Sharif's knowledge currently lives in scattered, informal media** — YouTube lectures, WhatsApp broadcasts, documents, social media posts. Farmers only access it through direct, manual consultation with Dr. Sharif himself. This system **cannot scale**.
 
 ---
 
