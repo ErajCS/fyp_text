@@ -9,8 +9,8 @@
 
 ### A RAG-Powered Expert Chatbot for Sustainable Natural Farming in Pakistan
 
-> **Final Year Project** — Dhanani School of Science & Engineering, Habib University  
-> *Dhanani School Undergraduate Research Symposium (DURS) 2026*  
+> **Final Year Project** — Dhanani School of Science & Engineering, Habib University
+> *Dhanani School Undergraduate Research Symposium (DURS) 2026*
 > Stream: Artificial Intelligence & Machine Learning · Sub-stream: AI for Transforming Agriculture
 
 ---
@@ -27,7 +27,9 @@ The system is centred on **Paedar Qudratti Nizam-e-Kashtari (PQNK)**, a sustaina
 
 1. **Multimodal Knowledge Base** — Systematically collected and processed the scattered PQNK corpus. Raw content — spanning multiple languages and formats — undergoes language detection, machine translation, semantic chunking, and vector embedding, indexed into a Qdrant vector store for efficient retrieval.
 
-2. **Domain-Restricted RAG Chatbot** — Grounds every response exclusively within Dr. Sharif's curated, approved corpus, eliminating hallucination risks of general-purpose LLMs. Responses are delivered in both **text and synthesised audio** in Urdu and English, deliberately lowering literacy and accessibility barriers for rural users.
+2. **Domain-Restricted RAG Chatbot** — Grounds every response exclusively within Dr. Sharif's curated, approved corpus, eliminating hallucination risks of general-purpose LLMs. Responses are delivered in both **text and synthesised audio** in Urdu and English.
+
+3. **Google Drive Repository** — All uploaded documents, images, and videos are simultaneously stored on Google Drive, organised by type and category. Users can browse and access all resources directly through the website.
 
 ---
 
@@ -36,21 +38,22 @@ The system is centred on **Paedar Qudratti Nizam-e-Kashtari (PQNK)**, a sustaina
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │                     React Frontend (Vite)                    │
-│          Login · Signup · Dashboard · Chatbot · Admin        │
-│              TailwindCSS · Framer Motion · Lucide            │
+│    Login · Signup · Dashboard · Chatbot · Repository · Admin │
 └───────────────────────┬──────────────────────────────────────┘
                         │  HTTP (Vite Proxy → :5000)
 ┌───────────────────────▼──────────────────────────────────────┐
 │                     Flask REST API                           │
 │   /api/login · /api/signup · /get_response · /generate_audio │
+│         /api/repository · /api/admin/*                       │
 │          Flask-Login · Flask-CORS · Flask-Bcrypt             │
-└──────┬────────────────┬────────────────────────┬─────────────┘
-       │                │                        │
-  ┌────▼────┐    ┌──────▼──────┐          ┌──────▼──────┐
-  │PostgreSQL│    │ Qdrant Cloud│          │ OpenAI API  │
-  │ (Users)  │    │ (Vectors)   │          │ GPT-4o /    │
-  │          │    │ pqnk_v2     │          │ Embeddings  │
-  └──────────┘    └─────────────┘          └─────────────┘
+└──────┬────────────────┬───────────────────────┬──────────────┘
+       │                │                       │              │
+  ┌────▼────┐    ┌──────▼──────┐         ┌──────▼──────┐ ┌───▼──────────┐
+  │PostgreSQL│    │ Qdrant Cloud│         │ OpenAI API  │ │ Google Drive │
+  │ (Users & │    │ (Vectors)   │         │ GPT-4o /    │ │  Repository  │
+  │Resources)│    │ pqnk_v2     │         │ Embeddings  │ │(PDFs/Images/ │
+  └──────────┘    └─────────────┘         └─────────────┘ │   Videos)    │
+                                                           └──────────────┘
 ```
 
 ---
@@ -88,54 +91,56 @@ The core intelligence resides in `agri_ui/rag_demo.py`:
 fyp_text/
 │
 ├── agri_ui/                        # Backend application
-│   ├── app.py                      # Flask REST API (auth, chatbot, TTS, JSON API)
+│   ├── app.py                      # Flask REST API (auth, chatbot, TTS, repository)
 │   ├── rag_demo.py                 # RAG pipeline (retrieval + generation)
-│   ├── templates/                  # Legacy HTML/CSS frontend (fallback)
-│   │   ├── login.html
-│   │   ├── signup.html
-│   │   ├── dashboard.html
-│   │   └── chatbot.html
-│   └── static/                     # Static assets for legacy frontend
+│   ├── drive_service.py            # Google Drive API integration
+│   └── templates/                  # Legacy HTML frontend (fallback)
 │
-├── frontend-react/                 # Official React Frontend
+├── frontend-react/                 # React Frontend
 │   └── PQNK_Frontend/
 │       ├── src/
 │       │   ├── pages/              # Login, Signup, PublicHome
 │       │   │   └── app/            # Dashboard, Chatbot, Admin, SuperAdmin
-│       │   ├── components/         # UI components (layout, ui primitives)
+│       │   ├── components/         # UI components
 │       │   ├── layouts/            # Dashboard, Admin, SuperAdmin layouts
-│       │   ├── routes/             # AppRoutes.jsx (routing config)
-│       │   └── main.jsx            # Entry point
-│       ├── vite.config.js          # Vite config with Flask proxy
-│       ├── tailwind.config.js      # TailwindCSS configuration
-│       └── package.json            # Dependencies
+│       │   └── routes/             # AppRoutes.jsx
+│       └── package.json
 │
 ├── codes/                          # Data processing utilities
-│   ├── convert_pdf_to_text.py      # PDF → Plain text extraction
-│   ├── convert_to_urdu.py          # English → Urdu translation
-│   ├── convert_urdu_pdf_to_urdu_txt.py  # Urdu PDF → text
-│   ├── convert_urdu_to_eng.py      # Urdu → English translation
-│   ├── database.py                 # PostgreSQL database utilities
-│   ├── make_embeddings.py          # Generate vector embeddings
-│   ├── merge_embeddings.py         # Merge embedding datasets
-│   └── retrieve.py                 # Retrieval testing utilities
+│   ├── convert_pdf_to_text.py
+│   ├── convert_to_urdu.py
+│   ├── convert_urdu_pdf_to_urdu_txt.py
+│   ├── convert_urdu_to_eng.py
+│   ├── make_embeddings.py
+│   ├── merge_embeddings.py
+│   └── retrieve.py
 │
-├── text_pdfs/                      # Source PQNK documents (368 files)
-├── images/                         # Extracted PDF images (432 files)
-├── embeddings_output/              # Pre-computed embeddings
-├── faiss_indexes/                  # Legacy FAISS indexes (deprecated)
-├── static/                         # Global static assets (audio, images, CSS)
+├── scripts/                        # Utility & maintenance scripts
+│   ├── connect_qdrant.py           # Qdrant connectivity test
+│   ├── debug_resources.py          # Inspect DB resource records
+│   ├── diag_drive.py               # Drive folder structure diagnostic
+│   ├── fix_emojis.py               # Fix emoji encoding issues
+│   ├── migrate_add_superadmin_role.py
+│   ├── migrate_drive_columns.py
+│   ├── migrate_to_qdrant.py
+│   ├── qdrant_test.py
+│   └── test_logic.py
 │
-├── ingest_data.py                  # Main data ingestion → Qdrant pipeline
-├── migrate_to_qdrant.py            # Migration from local → Qdrant Cloud
+├── about-project/                  # Project documentation
+│   ├── DEPLOYMENT.md               # Deployment guide
+│   └── abstract_durs.tex           # DURS symposium abstract
+│
+├── ingest_data.py                  # Data ingestion → Qdrant pipeline
 ├── setup_database.py               # PostgreSQL schema setup
 ├── seed_users.py                   # Seed initial user accounts
+├── generate_oauth_token.py         # One-time Google OAuth2 token generator
 ├── extracting_images_from_pdfs.py  # Image extraction from PDFs
 ├── translating_images.py           # Image OCR + translation
-├── detection_of_lang_and_renaming.py  # Language detection for files
+├── detection_of_lang_and_renaming.py
 │
-├── .env                            # Environment variables (API keys)
-├── abstract_durs.tex               # DURS research symposium abstract
+├── .env                            # ⚠️ NOT committed — contains API keys
+├── .env.example                    # Template for environment variables
+├── token.json                      # ⚠️ NOT committed — Google OAuth token
 └── README.md                       # This file
 ```
 
@@ -148,10 +153,11 @@ fyp_text/
 - **Python 3.10+** with pip
 - **Node.js 18+** with npm
 - **PostgreSQL 14+** running locally
-- **Qdrant Cloud** account (or local Qdrant instance)
+- **Qdrant Cloud** account
 - **OpenAI API** key with GPT-4o access
+- **Google Cloud** project with Drive API enabled
 
-### 1. Clone & Setup Environment
+### 1. Clone & Setup
 
 ```bash
 git clone <repository-url>
@@ -160,25 +166,37 @@ cd fyp_text
 
 ### 2. Configure Environment Variables
 
-Create a `.env` file in the project root:
+Copy the example file and fill in your values:
+
+```bash
+cp .env.example .env
+```
+
+Required variables in `.env`:
 
 ```env
+# Database
+DATABASE_URL=postgresql://postgres:<password>@localhost/pqnk_db
+
+# AI Services
+OPENAI_API_KEY=your_openai_api_key
 QDRANT_API_KEY=your_qdrant_api_key
 QDRANT_URL=https://your-cluster.cloud.qdrant.io
-OPENAI_API_KEY=your_openai_api_key
+
+# Google Drive
+GOOGLE_DRIVE_CREDENTIALS_JSON=google_service_account.json
+GOOGLE_DRIVE_FOLDER_ID=your_root_folder_id
+
+# Flask
+SECRET_KEY=your_secret_key
 ```
 
 ### 3. Setup PostgreSQL Database
 
 ```bash
-# Create the database
 psql -U postgres -c "CREATE DATABASE pqnk_db;"
-
-# Setup tables
 python setup_database.py
-
-# (Optional) Seed test users
-python seed_users.py
+python seed_users.py   # Optional: seed test users
 ```
 
 ### 4. Install Python Dependencies
@@ -187,32 +205,45 @@ python seed_users.py
 pip install flask flask-sqlalchemy flask-bcrypt flask-login flask-cors
 pip install psycopg2-binary openai qdrant-client
 pip install python-dotenv edge-tts pyspellchecker rich
-pip install langdetect sentence-transformers
+pip install langdetect google-auth google-auth-oauthlib google-api-python-client
 ```
 
-### 5. Install React Frontend Dependencies
+### 5. Setup Google Drive Integration
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/) → Enable **Google Drive API**
+2. Create an **OAuth Client ID** (Desktop App) → Download as `oauth_credentials.json`
+3. Add your Gmail as a **Test User** in the OAuth Consent Screen
+4. Run the one-time authorization:
+   ```bash
+   python generate_oauth_token.py
+   ```
+   A browser window opens — log in and allow access. This creates `token.json`.
+
+5. Create a `PQNK_LIVE_REPOSITORY` folder on your Drive with subfolders: `PDFs/`, `Images/`, `Videos/`
+6. Add the folder ID to your `.env` as `GOOGLE_DRIVE_FOLDER_ID`
+
+> ⚠️ **Never commit `token.json` or `oauth_credentials.json`** — they are already in `.gitignore`
+
+### 6. Install React Frontend
 
 ```bash
 cd frontend-react/PQNK_Frontend
 npm install
 ```
 
-### 6. Run the Application
-
-You need **two terminal windows**:
+### 7. Run the Application
 
 **Terminal 1 — Flask Backend:**
 ```bash
-cd agri_ui
-python app.py
-# Backend starts on http://127.0.0.1:5000
+python agri_ui/app.py
+# Starts on http://127.0.0.1:5000
 ```
 
 **Terminal 2 — React Frontend:**
 ```bash
 cd frontend-react/PQNK_Frontend
 npm run dev
-# Frontend starts on http://localhost:5173
+# Starts on http://localhost:5173
 ```
 
 Open **http://localhost:5173** in your browser.
@@ -221,56 +252,60 @@ Open **http://localhost:5173** in your browser.
 
 ## 🔌 API Endpoints
 
-### Authentication (JSON API)
+### Authentication
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/login` | Login with email/password → returns user object |
+| `POST` | `/api/login` | Login → returns user object |
 | `POST` | `/api/signup` | Create new account |
-| `GET` | `/api/user` | Get current authenticated user |
-| `POST` | `/api/logout` | Logout current session |
+| `GET` | `/api/user` | Get current user |
+| `POST` | `/api/logout` | Logout |
 
 ### Chatbot
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/get_response` | Send message to RAG pipeline → returns AI response |
-| `POST` | `/generate_audio` | Convert text to speech (Urdu/English) → returns audio URL |
+| `POST` | `/get_response` | Send message → AI response |
+| `POST` | `/generate_audio` | Text to speech (Urdu/English) |
 
-### Legacy HTML Routes
+### Repository
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET/POST` | `/` | HTML login form |
-| `GET/POST` | `/signup` | HTML signup form |
-| `GET` | `/dashboard` | HTML dashboard |
-| `GET` | `/chatbot` | HTML chatbot interface |
+| `GET` | `/api/repository` | List all resources |
+| `POST` | `/api/repository/upload` | Upload file (admin only) → syncs to Drive |
+| `DELETE` | `/api/repository/<id>` | Delete resource (admin only) |
+
+### Admin
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/admin/stats` | System statistics |
+| `GET` | `/api/admin/users` | List all users |
+| `PUT` | `/api/admin/users/<id>` | Update user |
+| `DELETE` | `/api/admin/users/<id>` | Delete user |
 
 ---
 
-## 📊 Data Pipeline
+## 🗄️ Google Drive Structure
 
-The knowledge base was constructed through the following pipeline:
+Uploaded resources are automatically organized in Google Drive:
 
 ```
-Raw PDFs (Urdu + English)
-    │
-    ├── extracting_images_from_pdfs.py  → images/
-    ├── codes/convert_pdf_to_text.py    → text_pdfs/
-    ├── detection_of_lang_and_renaming.py
-    │
-    ├── codes/convert_urdu_to_eng.py    → Translated texts
-    ├── codes/convert_to_urdu.py        → Urdu translations
-    │
-    ├── codes/make_embeddings.py        → embeddings_output/
-    ├── codes/merge_embeddings.py       → Merged datasets
-    │
-    └── ingest_data.py                  → Qdrant Cloud (pqnk_v2)
+PQNK_LIVE_REPOSITORY/
+├── PDFs/
+│   ├── soil_science/
+│   ├── crop_production/
+│   └── water_management/ ...
+├── Images/
+│   ├── PQNK_research_and_knowledge_papers/
+│   └── sustainable_agriculture/ ...
+└── Videos/
+    ├── community_and_farmer_insights/
+    └── crop_production/ ...
 ```
 
-**Vector Collection:** `pqnk_v2` on Qdrant Cloud  
-**Embedding Model:** `text-embedding-3-small` (1536 dimensions)  
-**Chunking:** 1000 chars with 200 overlap, language-aware separators
+Files are accessible to all users via shareable Drive links shown in the repository browser.
 
 ---
 
@@ -280,11 +315,12 @@ Raw PDFs (Urdu + English)
 |------|-------|-------------|
 | Public Home | `/` | Landing page |
 | Login | `/login` | User authentication |
-| Signup | `/signup` | New account creation with role selection |
-| Dashboard | `/dashboard` | Stats, quick actions, crop advisory, soil health |
-| Chatbot | `/chatbot` | AI assistant with audio playback, copy, feedback |
-| Admin Dashboard | `/admin-dashboard` | Admin management panel |
-| Super Admin | `/super-admin-dashboard` | System-wide administration |
+| Signup | `/signup` | Account creation with role selection |
+| Dashboard | `/dashboard` | Stats, quick actions, crop advisory |
+| Chatbot | `/chatbot` | AI assistant with audio playback |
+| Repository | `/content-management` | Browse/upload/delete resources |
+| Admin Dashboard | `/admin-dashboard` | User & system management |
+| Super Admin | `/super-admin-dashboard` | Full system administration |
 
 ---
 
@@ -292,18 +328,31 @@ Raw PDFs (Urdu + English)
 
 | Category | Technology |
 |----------|-----------|
-| **Frontend** | React 19, Vite 7, TailwindCSS 3, Framer Motion, Lucide Icons |
+| **Frontend** | React 19, Vite 7, TailwindCSS, Framer Motion, Lucide Icons |
 | **Backend** | Flask, Flask-Login, Flask-CORS, Flask-Bcrypt, Flask-SQLAlchemy |
-| **Database** | PostgreSQL (users), Qdrant Cloud (vectors) |
+| **Database** | PostgreSQL (users & resources), Qdrant Cloud (vectors) |
 | **AI/ML** | OpenAI GPT-4o, text-embedding-3-small, Edge TTS |
-| **NLP** | Language detection, spell correction, query expansion, intent compression |
-| **Data** | LangChain text splitters, PyMuPDF, langdetect |
+| **Storage** | Google Drive API (OAuth2) |
+| **NLP** | Language detection, spell correction, query expansion |
+
+---
+
+## ⚠️ Security Notes
+
+The following files **must never be committed** to version control (all in `.gitignore`):
+
+| File | Contains |
+|------|---------|
+| `.env` | All API keys and database credentials |
+| `token.json` | Google OAuth2 access/refresh token |
+| `oauth_credentials.json` | Google OAuth client secret |
+| `google_service_account.json` | Google service account key |
 
 ---
 
 ## 🌾 Keywords
 
-Retrieval-Augmented Generation (RAG) · Expert Knowledge Systems · Agricultural AI · Sustainable Farming · Natural Language Processing · Multimodal Knowledge Base · Large Language Models · Urdu NLP · Pakistan Agriculture
+Retrieval-Augmented Generation (RAG) · Expert Knowledge Systems · Agricultural AI · Sustainable Farming · Natural Language Processing · Multimodal Knowledge Base · Large Language Models · Urdu NLP · Pakistan Agriculture · Google Drive Integration
 
 ---
 

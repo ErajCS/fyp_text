@@ -124,6 +124,12 @@ export default function BrowseRepository() {
                                                 ⬇ View / Download
                                             </a>
                                         ) : null}
+                                        {r.drive_view_link && (
+                                            <a href={r.drive_view_link} target="_blank" rel="noreferrer"
+                                                className="px-3 py-1.5 rounded-lg bg-yellow-100 text-yellow-700 text-xs font-medium hover:bg-yellow-200 transition flex items-center gap-1">
+                                                📂 Drive
+                                            </a>
+                                        )}
                                     </div>
                                 </div>
                             ))}

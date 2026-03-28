@@ -48,12 +48,19 @@ image_description.log
 .DS_Store
 Thumbs.db
 
-# ── Google Credentials (if added later) ───────────────────────────────────────
+# ── Google Credentials & OAuth ────────────────────────────────────────────────
 service-account-key.json
 google-credentials.json
 credentials.json
 token.json
 token.pickle
+
+# Specific secret files in this project
+google_service_account.json
+oauth_credentials.json
+
+# Uploads folder (user-uploaded files, not for version control)
+uploads/
 
 # ── Misc ──────────────────────────────────────────────────────────────────────
 package-lock.json

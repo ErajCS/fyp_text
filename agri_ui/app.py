@@ -461,7 +461,7 @@ try:
     from dotenv import load_dotenv
     _env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env')
     load_dotenv(_env_path, override=True)
-    print("✅ .env loaded")
+    print("OK: .env loaded")
 except ImportError:
     pass
 
@@ -472,6 +472,7 @@ from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, login_user, login_required, logout_user, UserMixin, current_user
 from rag_demo import rag_pipeline, detect_lang
 from datetime import datetime
+import drive_service as _drive_svc
 
 
 # =======================
@@ -523,18 +524,20 @@ class User(db.Model, UserMixin):
 class Resource(db.Model):
     """Repository item: document, image, or video."""
     __tablename__ = 'resources'
-    id          = db.Column(db.Integer, primary_key=True)
-    title       = db.Column(db.String(255), nullable=False)
-    description = db.Column(db.Text)
-    category    = db.Column(db.String(100), nullable=False, default='General')
-    keywords    = db.Column(db.String(500))          # comma-separated
-    file_type   = db.Column(db.String(20), nullable=False)  # document / image / video
-    filename    = db.Column(db.String(255))          # stored filename on disk (null for video-link-only)
-    original_name = db.Column(db.String(255))        # original upload name
-    video_link  = db.Column(db.String(512))          # YouTube / external link (videos only)
-    uploaded_by = db.Column(db.Integer, db.ForeignKey('users.user_id'))
-    created_at  = db.Column(db.DateTime, default=datetime.utcnow)
-    uploader    = db.relationship('User', foreign_keys=[uploaded_by])
+    id            = db.Column(db.Integer, primary_key=True)
+    title         = db.Column(db.String(255), nullable=False)
+    description   = db.Column(db.Text)
+    category      = db.Column(db.String(100), nullable=False, default='General')
+    keywords      = db.Column(db.String(500))          # comma-separated
+    file_type     = db.Column(db.String(20), nullable=False)  # document / image / video
+    filename      = db.Column(db.String(255))          # stored filename on disk
+    original_name = db.Column(db.String(255))          # original upload name
+    video_link    = db.Column(db.String(512))          # YouTube / external link (videos only)
+    drive_file_id = db.Column(db.String(100))          # Google Drive file ID
+    drive_view_link = db.Column(db.String(512))        # Google Drive shareable view link
+    uploaded_by   = db.Column(db.Integer, db.ForeignKey('users.user_id'))
+    created_at    = db.Column(db.DateTime, default=datetime.utcnow)
+    uploader      = db.relationship('User', foreign_keys=[uploaded_by])
 
 
 # Directory for uploaded files
@@ -646,8 +649,8 @@ def get_response():
         ai_response = rag_pipeline(user_message)
         return jsonify({"response": ai_response})
     except Exception as e:
-        print(f"❌ RAG pipeline error: {e}")
-        return jsonify({"response": "⚠️ Sorry, I encountered an error processing your request. Please try again."}), 500
+        print(f"ERROR RAG pipeline error: {e}")
+        return jsonify({"response": "WARNING Sorry, I encountered an error processing your request. Please try again."}), 500
 
 @app.route("/generate_audio", methods=["POST"])
 @login_required
@@ -680,12 +683,12 @@ def generate_audio():
         loop.run_until_complete(generate_speech_file(clean_text, voice, filepath))
         loop.close()
     except Exception as e:
-        print(f"❌ TTS Error: {e}")
+        print(f"ERROR TTS Error: {e}")
         return jsonify({"error": str(e)}), 500
 
     # 5. Return URL
     audio_url = url_for('static', filename=f'audio/{filename}')
-    print(f"✅ Audio generated: {audio_url}")
+    print(f"OK Audio generated: {audio_url}")
     
     return jsonify({"audio_url": audio_url})
 
@@ -703,7 +706,7 @@ from email.mime.text import MIMEText
 try:
     from dotenv import load_dotenv
     load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env'), override=True)
-    print("✅ .env loaded")
+    print("OK .env loaded")
 except ImportError:
     pass
 
@@ -749,18 +752,18 @@ def send_otp_sms(to_phone: str, otp_code: str, name: str = "") -> tuple:
             f"This code expires in 10 minutes. Do NOT share it."
         )
         message = client.messages.create(body=body, from_=from_, to=formatted)
-        print(f"✅ SMS sent to {formatted} (SID: {message.sid})")
+        print(f"OK SMS sent to {formatted} (SID: {message.sid})")
         return True, None
     except TwilioRestException as e:
         err = f"Twilio error {e.code}: {e.msg}"
-        print(f"❌ {err}")
+        print(f"ERROR {err}")
         return False, err
     except ImportError:
         err = "Twilio package not installed. Run: pip install twilio"
-        print(f"❌ {err}")
+        print(f"ERROR {err}")
         return False, err
     except Exception as e:
-        print(f"❌ SMS send error: {e}")
+        print(f"ERROR SMS send error: {e}")
         return False, str(e)
 
 # ─── Email via Gmail SMTP ─────────────────────────────────────────────────────
@@ -807,14 +810,14 @@ def send_otp_email(to_email: str, otp_code: str, name: str = "") -> tuple:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(mail_user, mail_pass)
             server.sendmail(mail_user, to_email, msg.as_string())
-        print(f"✅ OTP email sent to {to_email}")
+        print(f"OK OTP email sent to {to_email}")
         return True, None
     except smtplib.SMTPAuthenticationError as e:
         msg_txt = "Gmail auth failed — check MAIL_PASSWORD is a valid 16-char App Password"
-        print(f"\n❌ SMTP Auth Error: {e}\n⚠️  {msg_txt}\n🔑 Fallback OTP: {otp_code}\n")
+        print(f"\nERROR SMTP Auth Error: {e}\nWARNING  {msg_txt}\n🔑 Fallback OTP: {otp_code}\n")
         return False, msg_txt
     except Exception as e:
-        print(f"\n❌ Email send error: {e}\n🔑 Fallback OTP: {otp_code}\n")
+        print(f"\nERROR Email send error: {e}\n🔑 Fallback OTP: {otp_code}\n")
         return False, str(e)
 
 # ─── Combined dispatcher (parallel threads) ───────────────────────────────────
@@ -1232,17 +1235,18 @@ def api_admin_delete_user(user_id):
 
 def resource_to_dict(r):
     return {
-        "id":            r.id,
-        "title":         r.title,
-        "description":   r.description or "",
-        "category":      r.category,
-        "keywords":      r.keywords or "",
-        "file_type":     r.file_type,
-        "filename":      r.filename or "",
-        "original_name": r.original_name or "",
-        "video_link":    r.video_link or "",
-        "uploaded_by":   r.uploader.name if r.uploader else "Unknown",
-        "created_at":    r.created_at.strftime("%b %d, %Y") if r.created_at else "",
+        "id":              r.id,
+        "title":           r.title,
+        "description":     r.description or "",
+        "category":        r.category,
+        "keywords":        r.keywords or "",
+        "file_type":       r.file_type,
+        "filename":        r.filename or "",
+        "original_name":   r.original_name or "",
+        "video_link":      r.video_link or "",
+        "drive_view_link": r.drive_view_link or "",
+        "uploaded_by":     r.uploader.name if r.uploader else "Unknown",
+        "created_at":      r.created_at.strftime("%b %d, %Y") if r.created_at else "",
     }
 
 
@@ -1322,16 +1326,35 @@ def api_repo_upload():
     if file_type == "video" and not video_link:
         return jsonify({"success": False, "message": "Video link is required for video resources"}), 400
 
+    # ── Google Drive upload (if configured) ──────────────────────────
+    drive_file_id   = None
+    drive_view_link = None
+    if saved_filename:
+        # Map file_type to Folder Name
+        type_folder_map = {"document": "PDFs", "image": "Images", "video": "Videos"}
+        drive_path = [type_folder_map.get(file_type, "General"), category]
+        
+        drive_result = _drive_svc.upload_file(
+            local_path     = os.path.join(UPLOAD_DIR, saved_filename),
+            filename       = original_name or saved_filename,
+            mime_type      = _drive_svc.get_mime_type(original_name or saved_filename),
+            subfolder_path = drive_path
+        )
+        drive_file_id   = drive_result.get("file_id")
+        drive_view_link = drive_result.get("view_link")
+
     resource = Resource(
-        title         = title,
-        description   = description,
-        category      = category,
-        keywords      = keywords,
-        file_type     = file_type,
-        filename      = saved_filename,
-        original_name = original_name,
-        video_link    = video_link if file_type == "video" else None,
-        uploaded_by   = current_user.id,
+        title           = title,
+        description     = description,
+        category        = category,
+        keywords        = keywords,
+        file_type       = file_type,
+        filename        = saved_filename,
+        original_name   = original_name,
+        video_link      = video_link if file_type == "video" else None,
+        drive_file_id   = drive_file_id,
+        drive_view_link = drive_view_link,
+        uploaded_by     = current_user.id,
     )
     db.session.add(resource)
     db.session.commit()
@@ -1352,6 +1375,10 @@ def api_repo_delete(resource_id):
         file_path = os.path.join(UPLOAD_DIR, resource.filename)
         if os.path.exists(file_path):
             os.remove(file_path)
+
+    # Delete from Google Drive if it was synced
+    if resource.drive_file_id:
+        _drive_svc.delete_file(resource.drive_file_id)
 
     db.session.delete(resource)
     db.session.commit()

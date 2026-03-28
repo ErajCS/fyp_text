@@ -117,7 +117,7 @@
 #     if not passages:
 #         return "⚠ No relevant documents found in FAISS."
 
-#     # ✅ Print retrieved chunks for debugging
+#     # OK Print retrieved chunks for debugging
 #     print("\n📄 Retrieved Chunks:")
 #     for i, p in enumerate(passages):
 #         print(f"--- Chunk {i+1} ---")
@@ -134,7 +134,7 @@
 # # Run testing mode
 # # ---------------------------
 # if __name__ == "__main__":
-#     print("🚀 FREE RAG TESTING MODE (Offline, No API Required)\n")
+#     print("INFO FREE RAG TESTING MODE (Offline, No API Required)\n")
 
 #     while True:
 #         q = input("Ask something (or 'exit'): ")
@@ -171,7 +171,7 @@
 # try:
 #     client = OpenAI(api_key=OPENAI_API_KEY)
 # except:
-#     print("⚠️ OpenAI API Key missing. RAG generation will fail.")
+#     print("WARNING OpenAI API Key missing. RAG generation will fail.")
 #     client = None
 
 # def get_db_connection():
@@ -218,7 +218,7 @@
 
 # def generate_gpt_response(query, passages):
 #     if not client:
-#         return "⚠️ OpenAI client not connected. Cannot generate response."
+#         return "WARNING OpenAI client not connected. Cannot generate response."
 
 #     context_text = "\n\n".join([f"[Source: {p['filename']}]: {p['text']}" for p in passages])
     
@@ -248,7 +248,7 @@
 #     passages = retrieve_passages_from_db(question, lang)
     
 #     if not passages:
-#         return "⚠️ No relevant information found in the PQNK knowledge base."
+#         return "WARNING No relevant information found in the PQNK knowledge base."
         
 #     # 2. Generate Answer (from GPT)
 #     answer = generate_gpt_response(question, passages)
@@ -256,7 +256,7 @@
 
 # if __name__ == "__main__":
 #     # Test locally
-#     print("🚀 Database-Powered RAG Testing Mode")
+#     print("INFO Database-Powered RAG Testing Mode")
 #     while True:
 #         q = input("Ask (or exit): ")
 #         if q == "exit": break
@@ -326,7 +326,7 @@
 # try:
 #     client = OpenAI(api_key=OPENAI_API_KEY)
 # except:
-#     print("⚠️ OpenAI API Key missing.")
+#     print("WARNING OpenAI API Key missing.")
 #     client = None
 
 # def get_db_connection():
@@ -394,7 +394,7 @@
 
 # def generate_gpt_response(query, passages):
 #     if not client:
-#         return "⚠️ OpenAI client not connected. Cannot generate response."
+#         return "WARNING OpenAI client not connected. Cannot generate response."
 
 #     context_text = "\n\n".join([f"[Source: {p['filename']}]: {p['text']}" for p in passages])
     
@@ -424,7 +424,7 @@
 #     passages = retrieve_passages_from_db(question, lang)
     
 #     if not passages:
-#         return "⚠️ No relevant information found in the PQNK knowledge base."
+#         return "WARNING No relevant information found in the PQNK knowledge base."
         
 #     # 2. Generate Answer (from GPT)
 #     answer = generate_gpt_response(question, passages)
@@ -432,7 +432,7 @@
 
 # if __name__ == "__main__":
 #     # Test locally
-#     print("🚀 Database-Powered HYBRID RAG Testing Mode")
+#     print("INFO Database-Powered HYBRID RAG Testing Mode")
 #     while True:
 #         q = input("Ask (or exit): ")
 #         if q == "exit": break
@@ -496,11 +496,11 @@
 # print(f"🔧 Qdrant client version: {qdrant_client.__version__}")
 
 # # =========================================
-# print("🚀 Initializing RAG System...")
+# print("INFO Initializing RAG System...")
 
 # # Initialize models
 # model = SentenceTransformer("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
-# print("✅ Sentence Transformer loaded")
+# print("OK Sentence Transformer loaded")
 
 # # Initialize Qdrant
 # qdrant = QdrantClient(
@@ -508,11 +508,11 @@
 #     api_key=QDRANT_API_KEY,
 #     timeout=30
 # )
-# print("✅ Qdrant client connected")
+# print("OK Qdrant client connected")
 
 # # Initialize OpenAI
 # openai_client = OpenAI(api_key=OPENAI_API_KEY)
-# print("✅ OpenAI client initialized")
+# print("OK OpenAI client initialized")
 
 # # ============ INTELLIGENCE UTILS ============
 
@@ -586,7 +586,7 @@
         
 #         return list(set(paraphrases))[:2]  # Return unique paraphrases, max 2
 #     except Exception as e:
-#         print(f"⚠️ Paraphrase generation failed: {e}")
+#         print(f"WARNING Paraphrase generation failed: {e}")
 #         return [query]  # Return original if fails
 
 # # ============ RETRIEVAL CORE ============
@@ -622,10 +622,10 @@
 #                 })())
 #             return converted_results
 #         else:
-#             print("❌ Qdrant client has neither 'search' nor 'search_points' method")
+#             print("ERROR Qdrant client has neither 'search' nor 'search_points' method")
 #             return []
 #     except Exception as e:
-#         print(f"❌ Search failed: {e}")
+#         print(f"ERROR Search failed: {e}")
 #         return []
 
 # def retrieve_chunks(query, top_k=10):
@@ -662,7 +662,7 @@
 #             print(f"   Found {len(search_result)} chunks for paraphrase")
             
 #         except Exception as e:
-#             print(f"⚠️ Search failed: {e}")
+#             print(f"WARNING Search failed: {e}")
 #             continue
     
 #     # Deduplicate by text content
@@ -675,7 +675,7 @@
 #     # Sort by score
 #     sorted_results = sorted(unique_results.values(), key=lambda x: x['score'], reverse=True)
     
-#     print(f"✅ Retrieved {len(sorted_results)} unique chunks")
+#     print(f"OK Retrieved {len(sorted_results)} unique chunks")
 #     return sorted_results[:top_k]  # Return top results
 
 # # ============ ANSWER GENERATION ============
@@ -741,7 +741,7 @@
 #         )
 #         return response.choices[0].message.content
 #     except Exception as e:
-#         print(f"⚠️ OpenAI API error: {e}")
+#         print(f"WARNING OpenAI API error: {e}")
 #         lang = detect_lang(query)
 #         if lang == "ur":
 #             return "جواب تیار کرنے میں مسئلہ پیش آیا۔ براہ کرم دوبارہ کوشش کریں۔"
@@ -766,7 +766,7 @@
 #         chunks = retrieve_chunks(query, top_k=8)
         
 #         if not chunks:
-#             print("⚠️ No relevant chunks found")
+#             print("WARNING No relevant chunks found")
 #             lang = detect_lang(query)
 #             if lang == "ur":
 #                 return "کوئی متعلقہ معلومات نہیں ملیں۔"
@@ -791,7 +791,7 @@
 #         return answer
         
 #     except Exception as e:
-#         print(f"❌ Error in RAG pipeline: {e}")
+#         print(f"ERROR Error in RAG pipeline: {e}")
 #         import traceback
 #         traceback.print_exc()
         
@@ -830,21 +830,21 @@
 #     try:
 #         # First check if we can access collections
 #         collections = qdrant.get_collections()
-#         print(f"✅ Connected to Qdrant! Collections: {[col.name for col in collections.collections]}")
+#         print(f"OK Connected to Qdrant! Collections: {[col.name for col in collections.collections]}")
         
 #         # Test a simple search
 #         test_embedding = model.encode("test").tolist()
 #         results = search_qdrant(test_embedding, limit=1)
         
 #         if results:
-#             print(f"✅ Search works! Found {len(results)} results")
+#             print(f"OK Search works! Found {len(results)} results")
 #             return True
 #         else:
-#             print("⚠️ Search returned no results (collection might be empty)")
+#             print("WARNING Search returned no results (collection might be empty)")
 #             return True  # Connection still works
             
 #     except Exception as e:
-#         print(f"❌ Connection test failed: {e}")
+#         print(f"ERROR Connection test failed: {e}")
 #         return False
 
 # if __name__ == "__main__":
@@ -853,7 +853,7 @@
 #         # Run tests
 #         test_system()
 #     else:
-#         print("❌ Cannot proceed without Qdrant connection")
+#         print("ERROR Cannot proceed without Qdrant connection")
 
 
 
@@ -919,14 +919,14 @@
 # # ================= CONFIG =================
 # QDRAN
 # # =========================================
-# print("🚀 Initializing RAG System...")
+# print("INFO Initializing RAG System...")
 
 # # Initialize models
 # try:
 #     model = SentenceTransformer("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
-#     print("✅ Sentence Transformer loaded")
+#     print("OK Sentence Transformer loaded")
 # except Exception as e:
-#     print(f"❌ Failed to load Sentence Transformer: {e}")
+#     print(f"ERROR Failed to load Sentence Transformer: {e}")
 #     sys.exit(1)
 
 # # Initialize Qdrant - Try different initialization methods
@@ -937,9 +937,9 @@
 #         api_key=QDRANT_API_KEY,
 #         timeout=30
 #     )
-#     print("✅ Qdrant client connected (new API)")
+#     print("OK Qdrant client connected (new API)")
 # except Exception as e:
-#     print(f"⚠️ New API failed: {e}")
+#     print(f"WARNING New API failed: {e}")
 #     try:
 #         # Method 2: Older API (pre v1.6)
 #         qdrant = QdrantClient(
@@ -948,17 +948,17 @@
 #             port=6333,
 #             https=True
 #         )
-#         print("✅ Qdrant client connected (old API)")
+#         print("OK Qdrant client connected (old API)")
 #     except Exception as e2:
-#         print(f"❌ Both connection methods failed: {e2}")
+#         print(f"ERROR Both connection methods failed: {e2}")
 #         sys.exit(1)
 
 # # Initialize OpenAI
 # try:
 #     openai_client = OpenAI(api_key=OPENAI_API_KEY)
-#     print("✅ OpenAI client initialized")
+#     print("OK OpenAI client initialized")
 # except Exception as e:
-#     print(f"❌ Failed to initialize OpenAI: {e}")
+#     print(f"ERROR Failed to initialize OpenAI: {e}")
 #     sys.exit(1)
 
 # # ============ TEST QDRANT CONNECTION ============
@@ -970,11 +970,11 @@
 #     try:
 #         # Test 1: Get collections
 #         collections = qdrant.get_collections()
-#         print(f"✅ Collections found: {[col.name for col in collections.collections]}")
+#         print(f"OK Collections found: {[col.name for col in collections.collections]}")
         
 #         # Test 2: Count points
 #         count_result = qdrant.count(collection_name=COLLECTION_NAME)
-#         print(f"✅ Points in collection: {count_result.count}")
+#         print(f"OK Points in collection: {count_result.count}")
         
 #         # Test 3: Check available search methods
 #         print("\n🔍 Available search methods:")
@@ -984,12 +984,12 @@
         
 #         return True
 #     except Exception as e:
-#         print(f"❌ Qdrant connection test failed: {e}")
+#         print(f"ERROR Qdrant connection test failed: {e}")
 #         return False
 
 # # Run connection test
 # if not test_qdrant_connection():
-#     print("\n⚠️ Cannot proceed without Qdrant connection")
+#     print("\nWARNING Cannot proceed without Qdrant connection")
 #     sys.exit(1)
 
 # # ============ INTELLIGENCE UTILS ============
@@ -1071,7 +1071,7 @@
         
 #         return list(set(paraphrases))[:3]  # Return unique paraphrases, max 3
 #     except Exception as e:
-#         print(f"⚠️ Paraphrase generation failed: {e}")
+#         print(f"WARNING Paraphrase generation failed: {e}")
 #         return [query]  # Return original if fails
 
 # # ============ RETRIEVAL CORE ============
@@ -1105,7 +1105,7 @@
 #                 )
 #                 search_result = search_result_obj.points
 #             except Exception as e:
-#                 print(f"⚠️ Search failed for paraphrase '{paraphrase}': {e}")
+#                 print(f"WARNING Search failed for paraphrase '{paraphrase}': {e}")
 #                 continue
             
 #             for result in search_result:
@@ -1125,7 +1125,7 @@
 #             print(f"   Found {len(search_result)} chunks for paraphrase")
             
 #         except Exception as e:
-#             print(f"⚠️ Embedding/search failed: {e}")
+#             print(f"WARNING Embedding/search failed: {e}")
 #             continue
     
 #     # Deduplicate by text content
@@ -1138,7 +1138,7 @@
 #     # Sort by score
 #     sorted_results = sorted(unique_results.values(), key=lambda x: x['score'], reverse=True)
     
-#     print(f"✅ Retrieved {len(sorted_results)} unique chunks")
+#     print(f"OK Retrieved {len(sorted_results)} unique chunks")
 #     return sorted_results[:top_k]  # Return top results
 
 # # ============ ANSWER GENERATION ============
@@ -1204,7 +1204,7 @@
 #         )
 #         return response.choices[0].message.content
 #     except Exception as e:
-#         print(f"⚠️ OpenAI API error: {e}")
+#         print(f"WARNING OpenAI API error: {e}")
 #         lang = detect_lang(query)
 #         if lang == "ur":
 #             return "جواب تیار کرنے میں مسئلہ پیش آیا۔ براہ کرم دوبارہ کوشش کریں۔"
@@ -1229,7 +1229,7 @@
 #         chunks = retrieve_chunks(query, top_k=8)
         
 #         if not chunks:
-#             print("⚠️ No relevant chunks found")
+#             print("WARNING No relevant chunks found")
 #             lang = detect_lang(query)
 #             if lang == "ur":
 #                 return "کوئی متعلقہ معلومات نہیں ملیں۔"
@@ -1254,7 +1254,7 @@
 #         return answer
         
 #     except Exception as e:
-#         print(f"❌ Error in RAG pipeline: {e}")
+#         print(f"ERROR Error in RAG pipeline: {e}")
 #         import traceback
 #         traceback.print_exc()
         
@@ -1355,7 +1355,7 @@
 # TOP_K = 8
 
 # # =========================================
-# print("🚀 Initializing RAG System...")
+# print("INFO Initializing RAG System...")
 
 # # Models
 # model = SentenceTransformer("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
@@ -1519,7 +1519,7 @@
 #                     "query": q
 #                 })
 #         except Exception as e:
-#             print(f"⚠️ Retrieval failed for paraphrase '{q}': {e}")
+#             print(f"WARNING Retrieval failed for paraphrase '{q}': {e}")
 #             continue
 
 #     # Deduplicate by text and keep highest scoring
@@ -1534,7 +1534,7 @@
 
 #     # --- Fallback: broad query if nothing found ---
 #     if not ranked:
-#         print("⚠️ No results found, using broad query fallback...")
+#         print("WARNING No results found, using broad query fallback...")
 #         broad_query = " ".join(query.split()[:2])
 #         if broad_query != query:  # prevent infinite recursion
 #             return retrieve_chunks(broad_query, top_k=top_k)
@@ -1674,7 +1674,7 @@
 # }
 
 # # =========================================
-# print("🚀 Initializing RAG System...")
+# print("INFO Initializing RAG System...")
 
 # # Models
 # model = SentenceTransformer("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2")
@@ -1963,7 +1963,7 @@
 #                     "query": q
 #                 })
 #         except Exception as e:
-#             print(f"⚠️ Retrieval failed for paraphrase '{q}': {e}")
+#             print(f"WARNING Retrieval failed for paraphrase '{q}': {e}")
 #             continue
 
 #     unique = {}
@@ -1976,7 +1976,7 @@
 #     ranked = [r for r in ranked if r["score"] >= MIN_SCORE_THRESHOLD]
 
 #     if not ranked:
-#         print("⚠️ No results found, using broad query fallback...")
+#         print("WARNING No results found, using broad query fallback...")
 #         broad_query = " ".join(query.split()[:2])
 #         if broad_query != query:
 #             return retrieve_chunks(broad_query, top_k=top_k)
@@ -2118,7 +2118,7 @@
 # KNOWN_ACRONYMS = { "pqnk": "PQNK" }
 
 # # =========================================
-# print(f"🚀 Initializing RAG System linked to {COLLECTION_NAME}...")
+# print(f"INFO Initializing RAG System linked to {COLLECTION_NAME}...")
 
 # # Models
 # # NOTE: SentenceTransformer is REMOVED. We use OpenAI for everything now.
@@ -2288,7 +2288,7 @@
 #                         "score": p.score
 #                     })
 #         except Exception as e:
-#             print(f"⚠️ Retrieval failed for '{q}': {e}")
+#             print(f"WARNING Retrieval failed for '{q}': {e}")
 #             continue
 
 #     print("-" * 60)
@@ -2304,9 +2304,9 @@
 #     final_chunks = [r for r in ranked if r["score"] >= MIN_SCORE_THRESHOLD][:top_k]
 
 #     # --- FINAL DEBUG PRINT ---
-#     print(f"✅ Final Top-{len(final_chunks)} Chunks Passed to GPT-4o:")
+#     print(f"OK Final Top-{len(final_chunks)} Chunks Passed to GPT-4o:")
 #     if not final_chunks:
-#         print("   ❌ No chunks met the threshold.")
+#         print("   ERROR No chunks met the threshold.")
 #     else:
 #         for i, chunk in enumerate(final_chunks):
 #             doc = chunk["payload"].get("doc_name", "Unknown")
@@ -2492,15 +2492,15 @@ console = Console(force_terminal=True)
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 QDRANT_URL = os.getenv("QDRANT_URL")
 
-# ⚠️ API key must be in .env — never hardcode here!
+# WARNING API key must be in .env — never hardcode here!
 # Falls back to OPENAI_API_KEY_2 if the primary key is unavailable
 _primary_key = os.getenv("OPENAI_API_KEY", "")
 _fallback_key = os.getenv("OPENAI_API_KEY_2", "")
 OPENAI_API_KEY = _primary_key if (_primary_key and not _primary_key.startswith("sk-proj-9eio")) else _fallback_key
 if not OPENAI_API_KEY:
-    print("❌ WARNING: No valid OPENAI_API_KEY found in .env — chatbot will not work")
+    print("WARNING: No valid OPENAI_API_KEY found in .env — chatbot will not work")
 else:
-    print(f"✅ OpenAI key loaded (ends: ...{OPENAI_API_KEY[-6:]}")
+    print(f"OK: OpenAI key loaded (ends: ...{OPENAI_API_KEY[-6:]})")
 
 
 COLLECTION_NAME = "pqnk_v2"
@@ -2519,7 +2519,7 @@ ACRONYM_MEMORY = {}
 KNOWN_ACRONYMS = {"pqnk": "PQNK"}
 
 # =========================================
-print(f"🚀 Initializing RAG System linked to {COLLECTION_NAME}...")
+print(f"INFO Initializing RAG System linked to {COLLECTION_NAME}...")
 
 spell_en = SpellChecker()
 openai_client = OpenAI(api_key=OPENAI_API_KEY)
@@ -2802,7 +2802,7 @@ def retrieve_chunks_single(query, top_k=8, debug_label=""):
                     })
 
         except Exception as e:
-            print(f"⚠️ Retrieval failed for '{q}': {e}")
+            print(f"WARNING Retrieval failed for '{q}': {e}")
             continue
 
     print("-" * 60)
@@ -2872,9 +2872,9 @@ def retrieve_chunks_hybrid(original_query, top_k=8):
     final_chunks = merged_sorted[:top_k]
 
     # --- FINAL DEBUG PRINT ---
-    print(f"\n✅ FINAL HYBRID Top-{len(final_chunks)} Chunks Passed to GPT-4o:")
+    print(f"\nOK FINAL HYBRID Top-{len(final_chunks)} Chunks Passed to GPT-4o:")
     if not final_chunks:
-        print("   ❌ No chunks met the threshold.")
+        print("   ERROR No chunks met the threshold.")
     else:
         for i, chunk in enumerate(final_chunks):
             doc = chunk["payload"].get("doc_name", "Unknown")
@@ -3199,7 +3199,7 @@ Meeting with an Alumni who worked on LLMs for his FYP:
 #                         "query": qtext
 #                     }
 #         except Exception as e:
-#             print(f"⚠️ Retrieval Error: {e}")
+#             print(f"WARNING Retrieval Error: {e}")
 #             continue
 
 #     candidates = list(seen_texts.values())
@@ -3226,7 +3226,7 @@ Meeting with an Alumni who worked on LLMs for his FYP:
 #         filtered = [r for r in ranked if r["rerank_score"] > -4.0] 
 
 #     except Exception as e:
-#         print(f"⚠️ Reranker failed, falling back to vector score: {e}")
+#         print(f"WARNING Reranker failed, falling back to vector score: {e}")
 #         ranked = sorted(candidates, key=lambda x: x["initial_score"], reverse=True)
 #         filtered = ranked
 
@@ -3234,7 +3234,7 @@ Meeting with an Alumni who worked on LLMs for his FYP:
 #     final_chunks = filtered[:top_k]
 
 #     if verbose:
-#         print(f"✅ Retrieved {len(final_chunks)} chunks after reranking.")
+#         print(f"OK Retrieved {len(final_chunks)} chunks after reranking.")
 #         for c in final_chunks:
 #             print(f"   Score: {c.get('rerank_score', c['initial_score']):.4f} | Doc: {c['payload'].get('doc_name')}")
 
