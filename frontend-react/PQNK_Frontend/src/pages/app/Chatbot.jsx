@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const IconSend = () => (
@@ -45,6 +46,15 @@ const IconVolume = () => (
     <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
     <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
     <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
+  </svg>
+);
+const IconMic = ({ active }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
+    strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+    <rect x="9" y="2" width="6" height="12" rx="3" fill={active ? "currentColor" : "none"} />
+    <path d="M5 10a7 7 0 0 0 14 0" />
+    <line x1="12" y1="17" x2="12" y2="22" />
+    <line x1="8" y1="22" x2="16" y2="22" />
   </svg>
 );
 const IconThumbsUp = () => (
@@ -332,7 +342,56 @@ function MessageBubble({ msg, index, copiedId, onCopy }) {
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
+// ── Speech Recognition Hook ──────────────────────────────────────────────────
+const SPEECH_LANGS = [
+  { code: "en-US", label: "EN", name: "English" },
+  { code: "ur-PK", label: "اردو", name: "Urdu" },
+];
+
+function useSpeechInput({ onResult, onError }) {
+  const recognitionRef = useRef(null);
+  const [listening, setListening] = useState(false);
+  const [langIndex, setLangIndex] = useState(0);
+  const supported = typeof window !== "undefined" &&
+    ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
+
+  const startListening = () => {
+    if (!supported) { onError("Voice input is not supported in this browser. Please use Google Chrome."); return; }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SR();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = SPEECH_LANGS[langIndex].code;
+    recognition.maxAlternatives = 1;
+    recognition.onresult = (e) => {
+      const transcript = e.results[0][0].transcript;
+      onResult(transcript);
+    };
+    recognition.onerror = (e) => {
+      console.error("Speech error:", e.error);
+      if (e.error !== "no-speech") onError("Voice input error: " + e.error);
+      setListening(false);
+    };
+    recognition.onend = () => setListening(false);
+    recognitionRef.current = recognition;
+    setListening(true);
+    recognition.start();
+  };
+
+  const stopListening = () => {
+    recognitionRef.current?.stop();
+    setListening(false);
+  };
+
+  const toggleLang = () => setLangIndex((i) => (i + 1) % SPEECH_LANGS.length);
+
+  return { listening, supported, startListening, stopListening, langIndex, toggleLang, langInfo: SPEECH_LANGS[langIndex] };
+}
+
+// ── Main Component ────────────────────────────────────────────────────────────
 export default function Chatbot() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [messages, setMessages] = useState([
     {
       role: "assistant",
@@ -396,6 +455,20 @@ export default function Chatbot() {
   const charLimit = 500;
   const charCount = input.length;
   const hasUserMessages = messages.filter((m) => m.role === "user").length > 0;
+  const [voiceError, setVoiceError] = useState("");
+
+  const { listening, supported: speechSupported, startListening, stopListening, langIndex, toggleLang, langInfo } = useSpeechInput({
+    onResult: (transcript) => {
+      setInput((prev) => (prev ? prev + " " + transcript : transcript));
+      setVoiceError("");
+      // Focus the textarea
+      setTimeout(() => inputRef.current?.focus(), 50);
+    },
+    onError: (msg) => {
+      setVoiceError(msg);
+      setTimeout(() => setVoiceError(""), 5000);
+    },
+  });
 
   return (
     <>
@@ -530,9 +603,21 @@ export default function Chatbot() {
             </div>
 
             <div className="hidden sm:flex items-center gap-1">
-              {["Home", "About Us", "Resources", "Contact Us"].map((link, i) => (
-                <button key={i} className="px-2.5 py-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-all text-xs font-medium">
-                  {link}
+              {[
+                { label: "Home", path: "/dashboard" },
+                { label: "About Us", path: "/about" },
+                { label: "Resources", path: "/browse-repository" },
+                { label: "Contact Us", path: "/contact" },
+              ].map((link) => (
+                <button
+                  key={link.path}
+                  onClick={() => navigate(link.path)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${location.pathname === link.path
+                    ? "bg-white/15 text-white"
+                    : "text-white/50 hover:text-white hover:bg-white/10"
+                    }`}
+                >
+                  {link.label}
                 </button>
               ))}
               <button className="ml-2 px-2.5 py-1 rounded-lg bg-white/10 border border-white/15 text-white/70 text-xs font-medium hover:bg-white/20 transition">
@@ -638,6 +723,32 @@ export default function Chatbot() {
                 }}
               />
               <div className="flex items-center gap-2 flex-shrink-0 self-end mb-0.5">
+                {/* Voice Language Toggle */}
+                <button
+                  type="button"
+                  onClick={toggleLang}
+                  title={`Switch to ${SPEECH_LANGS[(langIndex + 1) % SPEECH_LANGS.length].name}`}
+                  className="px-2 py-1 rounded-lg bg-white/10 border border-white/15 text-white/60 hover:text-white hover:bg-white/20 text-[11px] font-semibold transition-all"
+                >
+                  {langInfo.label}
+                </button>
+                {/* Mic Button */}
+                <button
+                  type="button"
+                  onClick={listening ? stopListening : startListening}
+                  title={!speechSupported ? "Voice input requires Google Chrome" : listening ? "Stop recording" : `Record in ${langInfo.name}`}
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 shadow-lg relative ${!speechSupported
+                      ? "bg-white/5 text-white/20 cursor-not-allowed"
+                      : listening
+                        ? "bg-red-500/80 text-white border-2 border-red-400 scale-105"
+                        : "bg-white/10 border border-white/15 text-white/60 hover:bg-emerald-700/60 hover:text-white hover:border-emerald-400/40"
+                    }`}
+                >
+                  {listening && (
+                    <span className="absolute inset-0 rounded-xl bg-red-500/30 animate-ping" />
+                  )}
+                  <IconMic active={listening} />
+                </button>
                 {charCount > 0 && (
                   <span className={`text-xs ${charCount > charLimit * 0.9 ? "text-amber-400" : "text-white/40"}`}>
                     {charCount}/{charLimit}
@@ -655,9 +766,31 @@ export default function Chatbot() {
                 </button>
               </div>
             </div>
-            <p className="text-white/30 text-xs text-center mt-2">
-              Press <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-white/40 font-mono text-[10px]">Enter</kbd> to send · <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-white/40 font-mono text-[10px]">Shift+Enter</kbd> for new line
-            </p>
+            {/* Voice status bar */}
+            {(listening || voiceError) && (
+              <div className={`flex items-center justify-center gap-2 mt-2 text-xs rounded-lg px-3 py-1.5 ${voiceError
+                  ? "bg-red-500/15 border border-red-400/20 text-red-300"
+                  : "bg-emerald-800/40 border border-emerald-500/20 text-emerald-300"
+                }`}>
+                {listening && (
+                  <span className="flex gap-0.5 items-end h-3">
+                    {[1, 2, 3, 4, 3].map((h, i) => (
+                      <span key={i} className="w-0.5 bg-emerald-400 rounded-full"
+                        style={{ height: `${h * 3}px`, animation: `typingDot 0.8s ease-in-out ${i * 0.12}s infinite` }} />
+                    ))}
+                  </span>
+                )}
+                {voiceError ? `⚠️ ${voiceError}` : `🎙️ Listening in ${langInfo.name}… speak now`}
+                {listening && <button onClick={stopListening} className="ml-2 text-red-300 hover:text-red-200 font-semibold">Stop</button>}
+              </div>
+            )}
+            {!listening && !voiceError && (
+              <p className="text-white/30 text-xs text-center mt-2">
+                Press <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-white/40 font-mono text-[10px]">Enter</kbd> to send ·
+                <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-white/40 font-mono text-[10px]"> Shift+Enter</kbd> new line ·
+                <span className="text-white/20 ml-1">🎙️ mic for voice</span>
+              </p>
+            )}
           </div>
         </div>
       </div>

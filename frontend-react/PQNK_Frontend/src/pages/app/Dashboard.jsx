@@ -111,7 +111,7 @@ export default function Dashboard() {
                     🤖 Ask AI Assistant
                   </button>
                   <button
-                    onClick={() => navigate("/resources")}
+                    onClick={() => navigate("/browse-repository")}
                     className="px-6 py-3 rounded-xl bg-white/10 border border-white/20 text-white font-semibold hover:bg-white/20 transition text-sm"
                   >
                     📚 Browse Repository

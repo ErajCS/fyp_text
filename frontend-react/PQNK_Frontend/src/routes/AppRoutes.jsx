@@ -10,6 +10,8 @@ import SuperAdminDashboard from "@/pages/app/SuperAdminDashboard"
 import Profile from "@/pages/app/Profile"
 import Repository from "@/pages/app/Repository"
 import BrowseRepository from "@/pages/app/BrowseRepository"
+import AboutUs from "@/pages/app/AboutUs"
+import ContactUs from "@/pages/app/ContactUs"
 
 export default function AppRoutes() {
   return (
@@ -23,6 +25,8 @@ export default function AppRoutes() {
       <Route path="/chatbot" element={<Chatbot />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/browse-repository" element={<BrowseRepository />} />
+      <Route path="/about" element={<AboutUs />} />
+      <Route path="/contact" element={<ContactUs />} />
       <Route path="/admin-dashboard" element={<AdminDashboard />} />
       <Route path="/admin-dashboard/content" element={<Repository />} />
       <Route path="/super-admin-dashboard" element={<SuperAdminDashboard />} />

@@ -1,5 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
+import Footer from "../components/layout/Footer";
 
 const navItems = [
   { label: "Dashboard", path: "/dashboard", icon: "📊" },
@@ -128,12 +129,21 @@ export default function DashboardLayout({ children }) {
         <div className="flex items-center justify-between px-8 py-3 bg-emerald-950/70 backdrop-blur-xl border-b border-white/10 flex-shrink-0">
 
           <div className="flex items-center gap-1">
-            {["Home", "About Us", "Resources", "Contact Us"].map((link, i) => (
+            {[
+              { label: "Home", path: "/dashboard" },
+              { label: "About Us", path: "/about" },
+              { label: "Resources", path: "/browse-repository" },
+              { label: "Contact Us", path: "/contact" },
+            ].map((link) => (
               <button
-                key={i}
-                className="px-3 py-1.5 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-all text-xs font-medium"
+                key={link.path}
+                onClick={() => navigate(link.path)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${location.pathname === link.path
+                  ? "bg-white/15 text-white border border-white/15"
+                  : "text-white/50 hover:text-white hover:bg-white/10"
+                  }`}
               >
-                {link}
+                {link.label}
               </button>
             ))}
           </div>
@@ -166,8 +176,9 @@ export default function DashboardLayout({ children }) {
         </div>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-y-auto p-8">
+        <div className="flex-1 overflow-y-auto flex flex-col p-8">
           {children}
+          <Footer />
         </div>
       </div>
     </div>
