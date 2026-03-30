@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useLanguage, TRANSLATIONS } from "../../context/LanguageContext";
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const IconSend = () => (
@@ -48,10 +49,10 @@ const IconVolume = () => (
     <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
   </svg>
 );
-const IconMic = ({ active }) => (
+const IconMic = ({ active, recording }) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
     strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-    <rect x="9" y="2" width="6" height="12" rx="3" fill={active ? "currentColor" : "none"} />
+    <rect x="9" y="2" width="6" height="12" rx="3" fill={recording ? "currentColor" : "none"} />
     <path d="M5 10a7 7 0 0 0 14 0" />
     <line x1="12" y1="17" x2="12" y2="22" />
     <line x1="8" y1="22" x2="16" y2="22" />
@@ -71,33 +72,41 @@ const IconThumbsDown = () => (
     <path d="M17 2h2.67A2.31 2.31 0 0 1 22 4v7a2.31 2.31 0 0 1-2.33 2H17" />
   </svg>
 );
+const IconTrash = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
+    strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+    <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" />
+    <path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4h6v2" />
+  </svg>
+);
 
-// ── Quick Topic Icons (from wireframe) ────────────────────────────────────────
+
 const QUICK_TOPICS = [
-  { icon: "🌿", label: "Crop Problem" },
-  { icon: "💧", label: "When to Water?" },
-  { icon: "🧪", label: "Fertilizer Info" },
-  { icon: "🌦️", label: "Weather Forecast" },
-  { icon: "🐛", label: "Pest Control" },
+  { id: "crop", icon: "🌿", label: "Crop Problem" },
+  { id: "water", icon: "💧", label: "When to Water?" },
+  { id: "fert", icon: "🧪", label: "Fertilizer Info" },
+  { id: "pest", icon: "🐛", label: "Pest Control" },
 ];
 
 const SUGGESTED_PROMPTS = [
-  { label: "Wheat Irrigation Schedule", text: "What is the best irrigation schedule for wheat crops in arid climates?" },
-  { label: "Soil Fertility Tips", text: "How can I improve soil fertility naturally without chemical fertilizers?" },
-  { label: "Pest Control Methods", text: "What are organic pest control methods for cotton crops?" },
-  { label: "Crop Yield Optimization", text: "How can I optimize crop yield for rice in monsoon season?" },
-  { label: "Seedling Care Guide", text: "What are the best practices for seedling care in nursery settings?" },
-];
-
-const RECENT_CHATS = [
-  { id: 1, title: "Wheat Irrigation Advice", preview: "Discussed optimal water scheduling…", time: "2h ago" },
-  { id: 2, title: "Soil Nitrogen Deficiency", preview: "NPK levels and organic amendments…", time: "Yesterday" },
-  { id: 3, title: "Cotton Pest Outbreak", preview: "Identified bollworm infestation…", time: "3d ago" },
-  { id: 4, title: "Maize Fertilizer Plan", preview: "Seasonal nutrition strategy…", time: "1w ago" },
+  { id: "wheat", label: "Wheat Irrigation" },
+  { id: "soil", label: "Soil Health" },
+  { id: "pest_cot", label: "Pest Control" },
+  { id: "rice", label: "Rice Yield" },
+  { id: "nursery", label: "Seedling Care" },
 ];
 
 function formatTime(date) {
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return new Date(date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+function formatRelative(dateStr) {
+  const d = new Date(dateStr);
+  const now = new Date();
+  const diff = (now - d) / 1000;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+  return d.toLocaleDateString();
 }
 
 function useCopyToClipboard() {
@@ -125,7 +134,7 @@ function TypingDots() {
   );
 }
 
-// ── Audio Button ──────────────────────────────────────────────────────────────
+// ── Audio Button ───────────────────────────────────────────────────────────────
 function AudioButton({ text }) {
   const [loading, setLoading] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -147,11 +156,8 @@ function AudioButton({ text }) {
         audio.play().catch(console.error);
         audio.onended = () => setPlaying(false);
       }
-    } catch (err) {
-      console.error("Audio error:", err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error("Audio error:", err); }
+    finally { setLoading(false); }
   };
 
   return (
@@ -168,13 +174,10 @@ function AudioButton({ text }) {
   );
 }
 
-// ── Markdown Renderer ─────────────────────────────────────────────────────────
+// ── Markdown Renderer ──────────────────────────────────────────────────────────
 function MarkdownMessage({ content }) {
-  // Split into lines and render each with formatting
   const lines = content.split("\n");
-
   const renderInline = (text) => {
-    // Bold: **text** or __text__
     const parts = text.split(/(\*\*[^*]+\*\*|__[^_]+__)/g);
     return parts.map((part, i) => {
       if (/^\*\*[^*]+\*\*$/.test(part) || /^__[^_]+__$/.test(part)) {
@@ -210,53 +213,30 @@ function MarkdownMessage({ content }) {
   while (i < lines.length) {
     const line = lines[i];
     const trimmed = line.trim();
-
-    // Empty line
-    if (!trimmed) {
-      flushList();
-      rendered.push(<div key={`br-${i}`} className="h-1.5" />);
-      i++;
-      continue;
-    }
-
-    // H1 / H2
+    if (!trimmed) { flushList(); rendered.push(<div key={`br-${i}`} className="h-1.5" />); i++; continue; }
     if (/^#{1,2}\s/.test(trimmed)) {
       flushList();
       const text = trimmed.replace(/^#{1,2}\s/, "");
-      rendered.push(
-        <p key={`h2-${i}`} className="font-bold text-green-300 text-sm mt-2 mb-0.5">
-          {renderInline(text)}
-        </p>
-      );
-      i++;
-      continue;
+      rendered.push(<p key={`h2-${i}`} className="font-bold text-green-300 text-sm mt-2 mb-0.5">{renderInline(text)}</p>);
+      i++; continue;
     }
-
-    // H3 — Sources / section heading
     if (/^###\s/.test(trimmed)) {
       flushList();
       const text = trimmed.replace(/^###\s/, "");
       rendered.push(
         <div key={`h3-${i}`} className="mt-3">
           <div className="border-t border-white/10 mb-2" />
-          <p className="font-semibold text-emerald-400 text-xs uppercase tracking-wide">
-            {renderInline(text)}
-          </p>
+          <p className="font-semibold text-emerald-400 text-xs uppercase tracking-wide">{renderInline(text)}</p>
         </div>
       );
-      i++;
-      continue;
+      i++; continue;
     }
-
-    // Numbered list  e.g. "1. item"
     if (/^\d+\.\s/.test(trimmed)) {
       flushList();
       const text = trimmed.replace(/^\d+\.\s/, "");
-      // collect consecutive numbered items
       const numItems = [text];
       while (i + 1 < lines.length && /^\d+\.\s/.test(lines[i + 1].trim())) {
-        i++;
-        numItems.push(lines[i].trim().replace(/^\d+\.\s/, ""));
+        i++; numItems.push(lines[i].trim().replace(/^\d+\.\s/, ""));
       }
       rendered.push(
         <ol key={`ol-${i}`} className="space-y-1 my-1.5 pl-1">
@@ -268,32 +248,23 @@ function MarkdownMessage({ content }) {
           ))}
         </ol>
       );
-      i++;
-      continue;
+      i++; continue;
     }
-
-    // Bullet: "- " or "* "
     if (/^[-*]\s/.test(trimmed)) {
       inList = true;
       listItems.push(trimmed.replace(/^[-*]\s/, ""));
-      i++;
-      continue;
+      i++; continue;
     }
-
-    // Normal paragraph
     flushList();
-    rendered.push(
-      <p key={`p-${i}`} className="leading-relaxed">{renderInline(trimmed)}</p>
-    );
+    rendered.push(<p key={`p-${i}`} className="leading-relaxed">{renderInline(trimmed)}</p>);
     i++;
   }
   flushList();
-
   return <div className="space-y-0.5 text-sm" dir="auto">{rendered}</div>;
 }
 
-// ── Message Bubble ────────────────────────────────────────────────────────────
-function MessageBubble({ msg, index, copiedId, onCopy }) {
+// ── Message Bubble ─────────────────────────────────────────────────────────────
+function MessageBubble({ msg, index, copiedId, onCopy, isStreaming }) {
   const isUser = msg.role === "user";
   return (
     <div
@@ -319,7 +290,10 @@ function MessageBubble({ msg, index, copiedId, onCopy }) {
           {isUser ? (
             <p className="text-sm leading-relaxed" dir="auto">{msg.content}</p>
           ) : (
-            <MarkdownMessage content={msg.content} />
+            <>
+              <MarkdownMessage content={msg.content} />
+              {isStreaming && <span className="inline-block w-0.5 h-4 bg-green-400 animate-pulse ml-0.5 align-middle" />}
+            </>
           )}
         </div>
 
@@ -341,134 +315,234 @@ function MessageBubble({ msg, index, copiedId, onCopy }) {
   );
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
-// ── Speech Recognition Hook ──────────────────────────────────────────────────
-const SPEECH_LANGS = [
-  { code: "en-US", label: "EN", name: "English" },
-  { code: "ur-PK", label: "اردو", name: "Urdu" },
-];
+// ── Whisper Voice Hook (replaces Web Speech API) ─────────────────────────────
+function useWhisperInput({ onResult, onError, onTranscribing, lang = "en" }) {
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const mediaRecorderRef = useRef(null);
+  const chunksRef = useRef([]);
 
-function useSpeechInput({ onResult, onError }) {
-  const recognitionRef = useRef(null);
-  const [listening, setListening] = useState(false);
-  const [langIndex, setLangIndex] = useState(0);
-  const supported = typeof window !== "undefined" &&
-    ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      chunksRef.current = [];
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mr.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        setTranscribing(true);
+        onTranscribing?.();
+        try {
+          const formData = new FormData();
+          formData.append("audio", blob, "audio.webm");
+          // Send language hint so Whisper transcribes in the correct language
+          // 'ur' for Urdu to prevent accidental Hindi output
+          formData.append("language", lang === "ur" ? "ur" : "en");
+          const res = await fetch("/api/transcribe", {
+            method: "POST",
+            credentials: "include",
+            body: formData,
+          });
+          const data = await res.json();
+          if (data.transcript) onResult(data.transcript);
+          else onError(data.error || "No transcript returned");
+        } catch (e) {
+          onError("Transcription failed: " + e.message);
+        } finally {
+          setTranscribing(false);
+        }
+      };
+      mediaRecorderRef.current = mr;
+      mr.start();
+      setRecording(true);
+    } catch (e) {
+      onError("Microphone access denied. Please allow microphone permissions.");
+    }
+  }, [onResult, onError, onTranscribing]);
 
-  const startListening = () => {
-    if (!supported) { onError("Voice input is not supported in this browser. Please use Google Chrome."); return; }
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SR();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = SPEECH_LANGS[langIndex].code;
-    recognition.maxAlternatives = 1;
-    recognition.onresult = (e) => {
-      const transcript = e.results[0][0].transcript;
-      onResult(transcript);
-    };
-    recognition.onerror = (e) => {
-      console.error("Speech error:", e.error);
-      if (e.error !== "no-speech") onError("Voice input error: " + e.error);
-      setListening(false);
-    };
-    recognition.onend = () => setListening(false);
-    recognitionRef.current = recognition;
-    setListening(true);
-    recognition.start();
-  };
+  const stopRecording = useCallback(() => {
+    mediaRecorderRef.current?.stop();
+    setRecording(false);
+  }, []);
 
-  const stopListening = () => {
-    recognitionRef.current?.stop();
-    setListening(false);
-  };
+  const toggle = useCallback(() => {
+    if (recording) stopRecording();
+    else startRecording();
+  }, [recording, startRecording, stopRecording]);
 
-  const toggleLang = () => setLangIndex((i) => (i + 1) % SPEECH_LANGS.length);
-
-  return { listening, supported, startListening, stopListening, langIndex, toggleLang, langInfo: SPEECH_LANGS[langIndex] };
+  return { recording, transcribing, toggle };
 }
 
-// ── Main Component ────────────────────────────────────────────────────────────
+// ── Language Toggle Button ─────────────────────────────────────────────────────
+// ── Main Component ─────────────────────────────────────────────────────────────
 export default function Chatbot() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [messages, setMessages] = useState([
-    {
-      role: "assistant",
-      content: "Hello! 🌾 I'm your AgriChat AI Assistant, powered by PQNK agricultural intelligence. I can help you with crop management, irrigation planning, soil health, pest control, fertilizer recommendations, and more. What would you like to explore today?",
-      timestamp: new Date(),
-    },
-  ]);
+
+  // ── Language (from global context — shared across all pages) ─────────────
+  const { lang, toggleLang } = useLanguage();
+  const isRtl = lang === "ur";
+  const t = (key) => TRANSLATIONS[lang][key] || TRANSLATIONS.en[key];
+
+  // ── Messages ──────────────────────────────────────────────────────────────
+  const WELCOME_MSG = {
+    role: "assistant",
+    content: "Hello! 🌾 I'm your AgriChat AI Assistant, powered by PQNK agricultural intelligence. I can help you with crop management, irrigation planning, soil health, pest control, fertilizer recommendations, and more. What would you like to explore today?",
+    timestamp: new Date(),
+  };
+  const [messages, setMessages] = useState([WELCOME_MSG]);
+  const [streamingIndex, setStreamingIndex] = useState(null);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
-  const [activeChat, setActiveChat] = useState(null);
+
+  // ── Conversations ─────────────────────────────────────────────────────────
+  const [conversations, setConversations] = useState([]);
+  const [activeConvId, setActiveConvId] = useState(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const { copiedId, copy } = useCopyToClipboard();
 
-  const sendMessage = async (text) => {
-    const content = (text ?? input).trim();
-    if (!content) return;
+  const charLimit = 500;
+  const hasUserMessages = messages.some((m) => m.role === "user");
 
-    setMessages((prev) => [...prev, { role: "user", content, timestamp: new Date() }]);
+  // ── Fetch conversation list ───────────────────────────────────────────────
+  const fetchHistory = useCallback(async () => {
+    try {
+      const res = await fetch("/api/chat/history", { credentials: "include" });
+      if (res.ok) setConversations(await res.json());
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => { fetchHistory(); }, [fetchHistory]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, typing]);
+
+  // ── Load a past conversation ──────────────────────────────────────────────
+  const loadConversation = async (convId) => {
+    setLoadingHistory(true);
+    setActiveConvId(convId);
+    try {
+      const res = await fetch(`/api/chat/${convId}/messages`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load");
+      const msgs = await res.json();
+      setMessages(msgs.map((m) => ({ ...m, timestamp: new Date(m.timestamp) })));
+    } catch {
+      setMessages([{ role: "assistant", content: "⚠️ Could not load this conversation.", timestamp: new Date() }]);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  // ── New Chat ──────────────────────────────────────────────────────────────
+  const handleNewChat = useCallback(async () => {
+    try {
+      const res = await fetch("/api/chat/new", { method: "POST", credentials: "include" });
+      const data = await res.json();
+      setActiveConvId(data.id);
+      setMessages([WELCOME_MSG]);
+      setInput("");
+      fetchHistory();
+    } catch {
+      setActiveConvId(null);
+      setMessages([WELCOME_MSG]);
+    }
+  }, [fetchHistory]);
+
+  // ── Delete conversation ───────────────────────────────────────────────────
+  const deleteConversation = async (e, convId) => {
+    e.stopPropagation();
+    await fetch(`/api/chat/${convId}`, { method: "DELETE", credentials: "include" });
+    if (activeConvId === convId) { setActiveConvId(null); setMessages([WELCOME_MSG]); }
+    fetchHistory();
+  };
+
+  // ── Send message with streaming ────────────────────────────────────────────
+  const sendMessage = useCallback(async (text) => {
+    const content = (text ?? input).trim();
+    if (!content || typing) return;
+
+    const userMsg = { role: "user", content, timestamp: new Date() };
+    setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setTyping(true);
+    if (inputRef.current) inputRef.current.style.height = "auto";
+
+    // Create a placeholder for the AI answer
+    const aiPlaceholder = { role: "assistant", content: "", timestamp: new Date() };
+    setMessages((prev) => [...prev, aiPlaceholder]);
+    const aiIndex = messages.length + 1; // index of the streaming bubble
+    setStreamingIndex(aiIndex);
 
     try {
       const res = await fetch("/get_response", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ msg: content }),
+        body: JSON.stringify({ msg: content, conversation_id: activeConvId }),
       });
-      if (!res.ok) throw new Error("Server responded with status " + res.status);
+
+      if (!res.ok) throw new Error("Status " + res.status);
       const data = await res.json();
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: data.response || "No response received.", timestamp: new Date() },
-      ]);
+      const fullText = data.response || "No response received.";
+
+      // Simulate streaming by revealing text word-by-word
+      const words = fullText.split(" ");
+      let currentText = "";
+      for (let w = 0; w < words.length; w++) {
+        currentText += (w === 0 ? "" : " ") + words[w];
+        const captured = currentText;
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { role: "assistant", content: captured, timestamp: new Date() };
+          return updated;
+        });
+        // Faster for longer texts to keep speed reasonable
+        if (w < words.length - 1) await new Promise((r) => setTimeout(r, Math.max(12, 35 - words.length * 0.2)));
+      }
+
+      // Update conversation tracking
+      if (data.conversation_id) {
+        setActiveConvId(data.conversation_id);
+        fetchHistory();
+      }
     } catch (error) {
       console.error("Chat API error:", error);
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "Oops! I encountered an error. Please ensure the backend is running.", timestamp: new Date() },
-      ]);
+      setMessages((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1] = {
+          role: "assistant",
+          content: "⚠️ I encountered an error. Please ensure the backend is running.",
+          timestamp: new Date(),
+        };
+        return updated;
+      });
     } finally {
       setTyping(false);
+      setStreamingIndex(null);
     }
-  };
+  }, [input, typing, activeConvId, messages.length, fetchHistory]);
 
-  const handleNewChat = () => {
-    setMessages([{
-      role: "assistant",
-      content: "Hello again! 🌱 Starting a fresh session. What agricultural topic can I help you with today?",
-      timestamp: new Date(),
-    }]);
-    setActiveChat(null);
-    setInput("");
-  };
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, typing]);
-
-  const charLimit = 500;
-  const charCount = input.length;
-  const hasUserMessages = messages.filter((m) => m.role === "user").length > 0;
-  const [voiceError, setVoiceError] = useState("");
-
-  const { listening, supported: speechSupported, startListening, stopListening, langIndex, toggleLang, langInfo } = useSpeechInput({
-    onResult: (transcript) => {
-      setInput((prev) => (prev ? prev + " " + transcript : transcript));
-      setVoiceError("");
-      // Focus the textarea
+  // ── Whisper voice input ───────────────────────────────────────────────────
+  const [voiceStatus, setVoiceStatus] = useState(""); // "recording" | "transcribing" | ""
+  const { recording, transcribing, toggle: toggleMic } = useWhisperInput({
+    lang,   // 'ur' or 'en' — sent to Whisper backend to force correct transcription language
+    onResult: (text) => {
+      setInput((prev) => (prev ? prev + " " + text : text));
+      setVoiceStatus("");
       setTimeout(() => inputRef.current?.focus(), 50);
     },
     onError: (msg) => {
-      setVoiceError(msg);
-      setTimeout(() => setVoiceError(""), 5000);
+      setVoiceStatus("error:" + msg);
+      setTimeout(() => setVoiceStatus(""), 5000);
     },
+    onTranscribing: () => setVoiceStatus("transcribing"),
   });
+  useEffect(() => { if (recording) setVoiceStatus("recording"); }, [recording]);
 
   return (
     <>
@@ -493,6 +567,7 @@ export default function Chatbot() {
 
       <div
         className="flex h-screen font-sans overflow-hidden relative"
+        dir={lang === "ur" ? "rtl" : "ltr"}
         style={{
           backgroundImage: "url('/agri-bg.png')",
           backgroundSize: "cover",
@@ -502,10 +577,10 @@ export default function Chatbot() {
         {/* Dark overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-green-950/60 via-emerald-900/50 to-green-950/70 z-0" />
 
-        {/* ── SIDEBAR — dark emerald ── */}
+        {/* ── SIDEBAR ── */}
         <aside className="w-[260px] bg-gradient-to-b from-emerald-900 to-green-950 backdrop-blur-xl shadow-2xl border-r border-emerald-700/30 flex flex-col hidden md:flex z-10 relative">
 
-          {/* Logo — AgriChat */}
+          {/* Logo */}
           <div className="p-5 border-b border-white/10">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center text-lg shadow-lg shadow-green-500/20">
@@ -524,22 +599,22 @@ export default function Chatbot() {
               onClick={handleNewChat}
               className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white py-2.5 px-4 rounded-xl transition-all duration-200 text-sm font-medium shadow-lg hover:shadow-green-500/25"
             >
-              <IconPlus /> New Conversation
+              <IconPlus /> {t("newConversation")}
             </button>
           </div>
 
-          {/* Quick Topics — wireframe inspired */}
+          {/* Quick Topics */}
           <div className="px-4 pb-3">
-            <p className="text-white/40 text-xs uppercase tracking-widest mb-2 font-semibold">Quick Topics</p>
+            <p className="text-white/40 text-xs uppercase tracking-widest mb-2 font-semibold">{t("quickTopics")}</p>
             <div className="space-y-1">
-              {QUICK_TOPICS.map((t, i) => (
+              {QUICK_TOPICS.map((topic, i) => (
                 <button
                   key={i}
-                  onClick={() => sendMessage(`Tell me about ${t.label.toLowerCase()}`)}
+                  onClick={() => sendMessage(`Tell me about ${topic.label.toLowerCase()}`)}
                   className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-white/10 transition-colors text-left text-white/60 hover:text-white text-xs"
                 >
-                  <span className="text-base">{t.icon}</span>
-                  <span className="truncate">{t.label}</span>
+                  <span className="text-base">{topic.icon}</span>
+                  <span className="truncate">{lang === "ur" ? topic.urdu : topic.label}</span>
                 </button>
               ))}
             </div>
@@ -547,37 +622,50 @@ export default function Chatbot() {
 
           <div className="mx-4 border-t border-white/10 my-2" />
 
-          {/* Recent Chats */}
+          {/* Conversations list */}
           <div className="px-4 flex-1 overflow-y-auto">
-            <p className="text-white/40 text-xs uppercase tracking-widest mb-2 font-semibold">Recent Conversations</p>
-            <div className="space-y-1">
-              {RECENT_CHATS.map((chat) => (
-                <button
-                  key={chat.id}
-                  onClick={() => setActiveChat(chat.id)}
-                  className={`w-full text-left px-3 py-2.5 rounded-xl transition-all duration-200 ${activeChat === chat.id
-                    ? "bg-white/15 border border-white/10"
-                    : "hover:bg-white/10"
-                    }`}
-                >
-                  <div className="flex justify-between items-start">
-                    <span className="text-white/80 text-xs font-medium truncate pr-2">{chat.title}</span>
-                    <span className="text-white/30 text-[10px] flex-shrink-0">{chat.time}</span>
+            <p className="text-white/40 text-xs uppercase tracking-widest mb-2 font-semibold">{t("recentConversations")}</p>
+            {conversations.length === 0 ? (
+              <p className="text-white/20 text-xs text-center py-4">{t("noConversations")}</p>
+            ) : (
+              <div className="space-y-1">
+                {conversations.map((conv) => (
+                  <div key={conv.id} className="group relative">
+                    <button
+                      onClick={() => loadConversation(conv.id)}
+                      className={`w-full text-left px-3 py-2.5 rounded-xl transition-all duration-200 pr-8 ${activeConvId === conv.id
+                        ? "bg-white/15 border border-white/10"
+                        : "hover:bg-white/10"
+                        }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <span className="text-white/80 text-xs font-medium truncate pr-2">{conv.title}</span>
+                        <span className="text-white/30 text-[10px] flex-shrink-0">{formatRelative(conv.updated_at)}</span>
+                      </div>
+                    </button>
+                    {/* Delete button */}
+                    <button
+                      onClick={(e) => deleteConversation(e, conv.id)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-lg bg-red-500/0 group-hover:bg-red-500/20 hover:!bg-red-500/40 text-white/0 group-hover:text-red-300 flex items-center justify-center transition-all duration-150"
+                      title="Delete conversation"
+                    >
+                      <IconTrash />
+                    </button>
                   </div>
-                </button>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* User Info */}
           <div className="p-4 border-t border-white/10">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center text-emerald-950 text-xs font-bold shadow">
-                MW
+                🌾
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-white text-xs font-medium truncate">Muhammad Wajeeh</p>
-                <p className="text-emerald-400/60 text-[11px]">Agriculture Researcher</p>
+                <p className="text-white text-xs font-medium truncate">PQNK User</p>
+                <p className="text-emerald-400/60 text-[11px]">Agriculture Intelligence</p>
               </div>
               <div className="w-2 h-2 rounded-full bg-green-400 status-dot flex-shrink-0" />
             </div>
@@ -585,29 +673,28 @@ export default function Chatbot() {
         </aside>
 
         {/* ── MAIN CHAT AREA ── */}
-        <div className="flex-1 flex flex-col min-w-0 relative z-10">
-
+        <div className={`flex-1 flex flex-col min-w-0 relative z-10 ${isRtl ? "font-urdu" : ""}`} dir={isRtl ? "rtl" : "ltr"}>
           {/* Header */}
-          <header className="flex items-center justify-between px-6 py-3 bg-emerald-950/70 backdrop-blur-xl border-b border-white/10 flex-shrink-0">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-lg shadow-green-500/20 text-white">
+          <header className={`flex items-center justify-between px-6 py-4 border-b border-white/10 bg-white/5 backdrop-blur-md sticky top-0 z-20 ${isRtl ? "flex-row-reverse" : ""}`}>
+            <div className={`flex items-center gap-3 ${isRtl ? "flex-row-reverse" : ""}`}>
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center text-white shadow-lg shadow-green-500/20">
                 <IconBot />
               </div>
-              <div>
+              <div className={isRtl ? "text-right" : ""}>
                 <h2 className="text-white font-semibold text-base leading-none">AgriChat AI Assistant</h2>
-                <div className="flex items-center gap-2 mt-1">
+                <div className={`flex items-center gap-2 mt-1 ${isRtl ? "flex-row-reverse" : ""}`}>
                   <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
-                  <span className="text-emerald-400 text-xs">Online · Powered by PQNK IntelliAgri</span>
+                  <span className="text-emerald-400 text-xs">{t("online")}</span>
                 </div>
               </div>
             </div>
 
-            <div className="hidden sm:flex items-center gap-1">
+            <div className={`hidden sm:flex items-center gap-1 ${isRtl ? "flex-row-reverse" : ""}`}>
               {[
-                { label: "Home", path: "/dashboard" },
-                { label: "About Us", path: "/about" },
-                { label: "Resources", path: "/browse-repository" },
-                { label: "Contact Us", path: "/contact" },
+                { labelKey: "home", path: "/dashboard" },
+                { labelKey: "about", path: "/about" },
+                { labelKey: "resources", path: "/browse-repository" },
+                { labelKey: "contact", path: "/contact" },
               ].map((link) => (
                 <button
                   key={link.path}
@@ -617,38 +704,45 @@ export default function Chatbot() {
                     : "text-white/50 hover:text-white hover:bg-white/10"
                     }`}
                 >
-                  {link.label}
+                  {t(link.labelKey)}
                 </button>
               ))}
-              <button className="ml-2 px-2.5 py-1 rounded-lg bg-white/10 border border-white/15 text-white/70 text-xs font-medium hover:bg-white/20 transition">
-                اردو
-              </button>
             </div>
           </header>
 
           {/* Messages */}
           <div className="flex-1 overflow-y-auto px-6 py-6 space-y-5">
-
-            {/* Welcome banner — "Welcome to AgriChat" (wireframe) */}
-            {!hasUserMessages && (
+            {/* Welcome banner */}
+            {!hasUserMessages && !loadingHistory && (
               <div className="bg-white/10 backdrop-blur-lg border border-white/15 rounded-2xl p-6 mb-2 shadow-lg" style={{ animation: "chatFadeIn 0.5s ease-out" }}>
-                <h3 className="text-white font-bold text-xl mb-2">Welcome to AgriChat</h3>
-                <p className="text-white/60 text-sm leading-relaxed">
-                  I'm trained on extensive agricultural datasets covering crops, soil science, irrigation, climate adaptation, pest management, and more. Ask me anything — from basic farming to advanced agronomic planning.
-                </p>
+                <h3 className="text-white font-bold text-xl mb-2">{t("welcomeTitle")}</h3>
+                <p className="text-white/60 text-sm leading-relaxed">{t("welcomeBody")}</p>
                 <div className="flex flex-wrap gap-2 mt-4">
-                  {["Pakistan Crops", "Smart Irrigation", "Organic Farming", "Climate Advisory"].map(tag => (
+                  {["Pakistan Crops", "Smart Irrigation", "Organic Farming", "Climate Advisory"].map((tag) => (
                     <span key={tag} className="bg-emerald-800/50 border border-emerald-500/20 text-emerald-300 text-xs px-3 py-1 rounded-full">{tag}</span>
                   ))}
                 </div>
               </div>
             )}
 
+            {loadingHistory && (
+              <div className="flex justify-center py-8">
+                <div className="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
+
             {messages.map((msg, index) => (
-              <MessageBubble key={index} msg={msg} index={index} copiedId={copiedId} onCopy={copy} />
+              <MessageBubble
+                key={index}
+                msg={msg}
+                index={index}
+                copiedId={copiedId}
+                onCopy={copy}
+                isStreaming={typing && index === messages.length - 1 && msg.role === "assistant"}
+              />
             ))}
 
-            {typing && (
+            {typing && messages[messages.length - 1]?.content === "" && (
               <div className="flex items-end gap-3" style={{ animation: "chatFadeIn 0.3s ease-out" }}>
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center flex-shrink-0 text-white">
                   <IconBot />
@@ -656,50 +750,52 @@ export default function Chatbot() {
                 <div className="bg-white/10 border border-white/15 rounded-2xl rounded-bl-none shadow-lg">
                   <TypingDots />
                 </div>
-                <span className="text-white/40 text-xs mb-1">AgriChat is thinking…</span>
               </div>
             )}
             <div ref={bottomRef} />
           </div>
 
-          {/* Quick Topic Icons — wireframe-inspired bottom strip */}
-          {!hasUserMessages && (
-            <div className="px-6 pb-3">
-              <p className="text-white/70 text-xs mb-2 uppercase tracking-widest drop-shadow">Quick Topics</p>
-              <div className="flex gap-3">
-                {QUICK_TOPICS.map((t, i) => (
-                  <button
-                    key={i}
-                    onClick={() => sendMessage(`Tell me about ${t.label.toLowerCase()}`)}
-                    className="flex flex-col items-center gap-1.5 px-4 py-3 rounded-xl bg-white/10 backdrop-blur-lg border border-white/15 shadow-lg hover:bg-white/20 hover:scale-[1.03] transition-all"
-                  >
-                    <span className="text-xl">{t.icon}</span>
-                    <span className="text-[11px] text-white/70 font-medium whitespace-nowrap">{t.label}</span>
-                  </button>
-                ))}
+          {/* Quick Topics & Suggested Prompts */}
+          {!hasUserMessages && !loadingHistory && (
+            <>
+              <div className="px-6 pb-3">
+                <div className="flex gap-3 flex-wrap">
+                  {QUICK_TOPICS.map((topic, i) => (
+                    <button
+                      key={topic.id}
+                      onClick={() => sendMessage(t(`query${topic.id.charAt(0).toUpperCase() + topic.id.slice(1)}`))}
+                      className="flex flex-col items-center gap-1.5 px-4 py-3 rounded-xl bg-white/10 backdrop-blur-lg border border-white/15 shadow-lg hover:bg-white/20 hover:scale-[1.03] transition-all"
+                    >
+                      <span className="text-xl">{topic.icon}</span>
+                      <span className="text-[11px] text-white/70 font-medium whitespace-nowrap">
+                        {t(`topic${topic.id.charAt(0).toUpperCase() + topic.id.slice(1)}`)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+              <div className="px-6 pb-3">
+                <p className="text-white/70 text-xs mb-2 uppercase tracking-widest drop-shadow">{t("suggestedQ")}</p>
+                <div className="flex flex-wrap gap-2">
+                  {SUGGESTED_PROMPTS.map((p, i) => {
+                    const promptKey = `prompt${p.id.charAt(0).toUpperCase() + p.id.slice(1)}`;
+                    const queryKey = `query${p.id.charAt(0).toUpperCase() + p.id.slice(1).replace("_cot", "Cot")}`;
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => sendMessage(t(queryKey))}
+                        className={`bg-white/10 hover:bg-white/20 border border-white/15 hover:border-emerald-400/30 text-white/70 hover:text-white text-xs px-3 py-2 rounded-full transition-all duration-200 ${isRtl ? "font-urdu" : ""}`}
+                      >
+                        {t(promptKey)}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
           )}
 
-          {/* Suggested Prompts */}
-          {!hasUserMessages && (
-            <div className="px-6 pb-3">
-              <p className="text-white/70 text-xs mb-2 uppercase tracking-widest drop-shadow">Suggested Questions</p>
-              <div className="flex flex-wrap gap-2">
-                {SUGGESTED_PROMPTS.map((p, i) => (
-                  <button
-                    key={i}
-                    onClick={() => sendMessage(p.text)}
-                    className="bg-white/10 hover:bg-white/20 border border-white/15 hover:border-emerald-400/30 text-white/70 hover:text-white text-xs px-3 py-2 rounded-full transition-all duration-200"
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Input bar */}
+          {/* ── Input bar ── */}
           <div className="px-6 pb-5 pt-3 bg-emerald-950/50 backdrop-blur-xl border-t border-white/10 flex-shrink-0 relative z-10">
             <div className="relative flex items-end gap-3 bg-white/10 border border-white/15 hover:border-emerald-400/40 focus-within:border-emerald-400/60 focus-within:ring-2 focus-within:ring-green-400/20 rounded-2xl px-4 py-3 transition-all duration-200 shadow-lg">
               <textarea
@@ -711,49 +807,41 @@ export default function Chatbot() {
                   e.target.style.height = "auto";
                   e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
                 }}
-                placeholder="Type your message…"
+                placeholder={t("placeholder")}
                 className="flex-1 bg-transparent text-white placeholder-white/40 resize-none focus:outline-none text-sm leading-relaxed"
                 style={{ minHeight: "24px", maxHeight: "120px" }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     sendMessage();
-                    e.target.style.height = "auto";
                   }
                 }}
               />
+
               <div className="flex items-center gap-2 flex-shrink-0 self-end mb-0.5">
-                {/* Voice Language Toggle */}
+                {/* Whisper mic button */}
                 <button
                   type="button"
-                  onClick={toggleLang}
-                  title={`Switch to ${SPEECH_LANGS[(langIndex + 1) % SPEECH_LANGS.length].name}`}
-                  className="px-2 py-1 rounded-lg bg-white/10 border border-white/15 text-white/60 hover:text-white hover:bg-white/20 text-[11px] font-semibold transition-all"
-                >
-                  {langInfo.label}
-                </button>
-                {/* Mic Button */}
-                <button
-                  type="button"
-                  onClick={listening ? stopListening : startListening}
-                  title={!speechSupported ? "Voice input requires Google Chrome" : listening ? "Stop recording" : `Record in ${langInfo.name}`}
-                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 shadow-lg relative ${!speechSupported
-                      ? "bg-white/5 text-white/20 cursor-not-allowed"
-                      : listening
-                        ? "bg-red-500/80 text-white border-2 border-red-400 scale-105"
-                        : "bg-white/10 border border-white/15 text-white/60 hover:bg-emerald-700/60 hover:text-white hover:border-emerald-400/40"
+                  onClick={toggleMic}
+                  disabled={transcribing}
+                  title={recording ? "Tap to stop recording" : transcribing ? "Transcribing…" : "Voice input (English & Urdu)"}
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 shadow-lg relative ${transcribing
+                    ? "bg-amber-500/30 text-amber-300 animate-pulse cursor-wait"
+                    : recording
+                      ? "bg-red-500/80 text-white border-2 border-red-400 scale-105"
+                      : "bg-white/10 border border-white/15 text-white/60 hover:bg-emerald-700/60 hover:text-white hover:border-emerald-400/40"
                     }`}
                 >
-                  {listening && (
-                    <span className="absolute inset-0 rounded-xl bg-red-500/30 animate-ping" />
-                  )}
-                  <IconMic active={listening} />
+                  {recording && <span className="absolute inset-0 rounded-xl bg-red-500/30 animate-ping" />}
+                  <IconMic active recording={recording} />
                 </button>
-                {charCount > 0 && (
-                  <span className={`text-xs ${charCount > charLimit * 0.9 ? "text-amber-400" : "text-white/40"}`}>
-                    {charCount}/{charLimit}
+
+                {input.length > 0 && (
+                  <span className={`text-xs ${input.length > charLimit * 0.9 ? "text-amber-400" : "text-white/40"}`}>
+                    {input.length}/{charLimit}
                   </span>
                 )}
+
                 <button
                   onClick={() => sendMessage()}
                   disabled={!input.trim() || typing}
@@ -766,13 +854,16 @@ export default function Chatbot() {
                 </button>
               </div>
             </div>
+
             {/* Voice status bar */}
-            {(listening || voiceError) && (
-              <div className={`flex items-center justify-center gap-2 mt-2 text-xs rounded-lg px-3 py-1.5 ${voiceError
-                  ? "bg-red-500/15 border border-red-400/20 text-red-300"
+            {(recording || transcribing || voiceStatus.startsWith("error:")) && (
+              <div className={`flex items-center justify-center gap-2 mt-2 text-xs rounded-lg px-3 py-1.5 ${voiceStatus.startsWith("error:")
+                ? "bg-red-500/15 border border-red-400/20 text-red-300"
+                : transcribing
+                  ? "bg-amber-500/15 border border-amber-400/20 text-amber-300"
                   : "bg-emerald-800/40 border border-emerald-500/20 text-emerald-300"
                 }`}>
-                {listening && (
+                {recording && (
                   <span className="flex gap-0.5 items-end h-3">
                     {[1, 2, 3, 4, 3].map((h, i) => (
                       <span key={i} className="w-0.5 bg-emerald-400 rounded-full"
@@ -780,15 +871,18 @@ export default function Chatbot() {
                     ))}
                   </span>
                 )}
-                {voiceError ? `⚠️ ${voiceError}` : `🎙️ Listening in ${langInfo.name}… speak now`}
-                {listening && <button onClick={stopListening} className="ml-2 text-red-300 hover:text-red-200 font-semibold">Stop</button>}
+                {voiceStatus.startsWith("error:")
+                  ? `⚠️ ${voiceStatus.slice(6)}`
+                  : transcribing
+                    ? `⏳ ${t("transcribing")}`
+                    : `🎙️ ${t("recording")}`
+                }
               </div>
             )}
-            {!listening && !voiceError && (
+            {!recording && !transcribing && !voiceStatus && (
               <p className="text-white/30 text-xs text-center mt-2">
-                Press <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-white/40 font-mono text-[10px]">Enter</kbd> to send ·
-                <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-white/40 font-mono text-[10px]"> Shift+Enter</kbd> new line ·
-                <span className="text-white/20 ml-1">🎙️ mic for voice</span>
+                {t("enterHint")} ·{" "}
+                <span className="text-white/20">🎙️ mic for English & Urdu voice</span>
               </p>
             )}
           </div>

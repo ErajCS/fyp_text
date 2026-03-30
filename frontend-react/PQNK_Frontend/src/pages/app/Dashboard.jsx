@@ -1,70 +1,37 @@
 import DashboardLayout from "../../layouts/DashboardLayout";
 import { useNavigate } from "react-router-dom";
-
-// ── PQNK Knowledge Cards ──────────────────────────────────────────────────────
-const PQNK_PILLARS = [
-  {
-    icon: "🌱",
-    title: "Natural Soil Rejuvenation",
-    desc: "PQNK eliminates synthetic fertilizers by rebuilding soil microbiomes through compost, vermicompost, and natural mulching — restoring long-term fertility without chemical dependency.",
-    color: "from-green-500/20 to-emerald-600/10 border-green-400/30",
-    tag: "Soil Health",
-  },
-  {
-    icon: "💧",
-    title: "Water Conservation",
-    desc: "Precision irrigation guided by soil moisture indicators and crop cycles reduces water usage by up to 40% compared to conventional flood irrigation practices.",
-    color: "from-blue-500/20 to-cyan-600/10 border-blue-400/30",
-    tag: "Irrigation",
-  },
-  {
-    icon: "🐛",
-    title: "Biological Pest Control",
-    desc: "Neem-based sprays, companion planting, and beneficial insect habitats replace chemical pesticides — protecting crops while maintaining ecological balance.",
-    color: "from-amber-500/20 to-yellow-600/10 border-amber-400/30",
-    tag: "Pest Control",
-  },
-  {
-    icon: "🌾",
-    title: "Seed Sovereignty",
-    desc: "PQNK promotes traditional, open-pollinated Pakistani seed varieties — preserving genetic diversity and freeing farmers from corporate seed dependency.",
-    color: "from-emerald-500/20 to-green-600/10 border-emerald-400/30",
-    tag: "Seeds",
-  },
-  {
-    icon: "🔬",
-    title: "Knowledge Integration",
-    desc: "Ancient farming wisdom is validated through modern agronomic science, creating a methodology that is both culturally rooted and evidence-based.",
-    color: "from-purple-500/20 to-violet-600/10 border-purple-400/30",
-    tag: "Research",
-  },
-  {
-    icon: "🤝",
-    title: "Community Farming",
-    desc: "Collective knowledge-sharing networks among farmers amplify PQNK adoption, creating village-level agricultural communities that support each other.",
-    color: "from-rose-500/20 to-pink-600/10 border-rose-400/30",
-    tag: "Community",
-  },
-];
-
-const BENEFITS = [
-  { stat: "40%", label: "Reduction in water usage", icon: "💧" },
-  { stat: "60%", label: "Lower input costs vs conventional", icon: "💰" },
-  { stat: "35%", label: "Improvement in soil organic matter", icon: "🌱" },
-  { stat: "0", label: "Synthetic chemicals used", icon: "🧪" },
-];
-
-const CROP_CATEGORIES = [
-  { name: "Wheat", urdu: "گندم", icon: "🌾", status: "Rabi (Winter)" },
-  { name: "Rice", urdu: "چاول", icon: "🍚", status: "Kharif (Summer)" },
-  { name: "Cotton", urdu: "کپاس", icon: "🌿", status: "Kharif (Summer)" },
-  { name: "Maize", urdu: "مکئی", icon: "🌽", status: "Kharif (Summer)" },
-  { name: "Sugarcane", urdu: "گنا", icon: "🎋", status: "Year-round" },
-  { name: "Vegetables", urdu: "سبزیاں", icon: "🥬", status: "Seasonal" },
-];
+import { useLanguage, TRANSLATIONS } from "../../context/LanguageContext";
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { lang } = useLanguage();
+  const t = (key) => TRANSLATIONS[lang][key] || TRANSLATIONS.en[key];
+  const isUrdu = lang === "ur";
+
+  const PQNK_PILLARS = [
+    { icon: "🌱", titleKey: "pillar0Title", descKey: "pillar0Desc", tagKey: "pillar0Tag", color: "from-green-500/20 to-emerald-600/10 border-green-400/30" },
+    { icon: "💧", titleKey: "pillar1Title", descKey: "pillar1Desc", tagKey: "pillar1Tag", color: "from-blue-500/20 to-cyan-600/10 border-blue-400/30" },
+    { icon: "🐛", titleKey: "pillar2Title", descKey: "pillar2Desc", tagKey: "pillar2Tag", color: "from-amber-500/20 to-yellow-600/10 border-amber-400/30" },
+    { icon: "🌾", titleKey: "pillar3Title", descKey: "pillar3Desc", tagKey: "pillar3Tag", color: "from-emerald-500/20 to-green-600/10 border-emerald-400/30" },
+    { icon: "🔬", titleKey: "pillar4Title", descKey: "pillar4Desc", tagKey: "pillar4Tag", color: "from-purple-500/20 to-violet-600/10 border-purple-400/30" },
+    { icon: "🤝", titleKey: "pillar5Title", descKey: "pillar5Desc", tagKey: "pillar5Tag", color: "from-rose-500/20 to-pink-600/10 border-rose-400/30" },
+  ];
+
+  const BENEFITS = [
+    { stat: "40%", labelKey: "benefit0", icon: "💧" },
+    { stat: "60%", labelKey: "benefit1", icon: "💰" },
+    { stat: "35%", labelKey: "benefit2", icon: "🌱" },
+    { stat: "0", labelKey: "benefit3", icon: "🧪" },
+  ];
+
+  const CROP_CATEGORIES = [
+    { name: "Wheat", urdu: "گندم", icon: "🌾", statusKey: "cropRabi" },
+    { name: "Rice", urdu: "چاول", icon: "🍚", statusKey: "cropKharif" },
+    { name: "Cotton", urdu: "کپاس", icon: "🌿", statusKey: "cropKharif" },
+    { name: "Maize", urdu: "مکئی", icon: "🌽", statusKey: "cropKharif" },
+    { name: "Sugarcane", urdu: "گنا", icon: "🎋", statusKey: "cropYearRound" },
+    { name: "Vegetables", urdu: "سبزیاں", icon: "🥬", statusKey: "cropSeasonal" },
+  ];
 
   return (
     <DashboardLayout>
@@ -80,53 +47,50 @@ export default function Dashboard() {
           .founder-glow { box-shadow: 0 0 60px rgba(52,211,153,0.25); }
         `}</style>
 
-        {/* ── HERO — PQNK Introduction ── */}
-        <div className="fade-up mb-10">
+        {/* ── HERO ── */}
+        <div className="fade-up mb-10" dir={isUrdu ? "rtl" : "ltr"}>
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-900/80 to-green-950/90 backdrop-blur-xl border border-emerald-500/20 shadow-2xl p-10">
-            {/* Background decoration */}
             <div className="absolute top-0 right-0 w-96 h-96 bg-green-400/5 rounded-full -translate-y-1/2 translate-x-1/4 blur-3xl" />
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-500/5 rounded-full translate-y-1/2 -translate-x-1/4 blur-2xl" />
 
             <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center gap-8">
               <div className="flex-1">
                 <div className="inline-flex items-center gap-2 bg-emerald-500/15 border border-emerald-400/20 rounded-full px-4 py-1.5 text-emerald-300 text-xs font-semibold tracking-wider uppercase mb-5">
-                  🌿 Welcome to AgriChat
+                  {t("welcomeBadge")}
                 </div>
                 <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight mb-4">
-                  Paedar Qudratti<br />
+                  {t("heroTitle1")}<br />
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-300">
-                    Nizam-e-Kashtari
+                    {t("heroTitle2")}
                   </span>
                 </h1>
                 <p className="text-white/60 text-lg leading-relaxed max-w-xl mb-6">
-                  <strong className="text-white/80">PQNK</strong> — Pakistan's pioneering sustainable natural farming
-                  methodology, developed to free smallholder farmers from chemical dependency through
-                  science-backed, nature-first agriculture.
+                  <strong className="text-white/80">PQNK</strong> — {t("heroDesc")}
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <button
                     onClick={() => navigate("/chatbot")}
                     className="px-6 py-3 rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 text-white font-semibold shadow-lg shadow-green-500/25 hover:scale-[1.02] transition-all text-sm"
                   >
-                    🤖 Ask AI Assistant
+                    {t("askAI")}
                   </button>
                   <button
                     onClick={() => navigate("/browse-repository")}
                     className="px-6 py-3 rounded-xl bg-white/10 border border-white/20 text-white font-semibold hover:bg-white/20 transition text-sm"
                   >
-                    📚 Browse Repository
+                    {t("browseRepository")}
                   </button>
                 </div>
               </div>
 
-              {/* Urdu name panel */}
+              {/* Urdu/EN name panel */}
               <div className="flex-shrink-0 text-center lg:text-right">
                 <div className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur">
                   <p className="text-4xl font-bold text-emerald-300 mb-2" dir="rtl">پائیدار قدرتی</p>
                   <p className="text-3xl font-bold text-white/80" dir="rtl">نظامِ کاشتکاری</p>
                   <div className="mt-4 border-t border-white/10 pt-4">
-                    <p className="text-xs text-white/40 uppercase tracking-widest">Pakistan Agriculture Research</p>
-                    <p className="text-white/60 text-sm mt-1">Est. Dr. Asif Sharif</p>
+                    <p className="text-xs text-white/40 uppercase tracking-widest">{t("pakAgriResearch")}</p>
+                    <p className="text-white/60 text-sm mt-1">{t("estBy")}</p>
                   </div>
                 </div>
               </div>
@@ -135,54 +99,37 @@ export default function Dashboard() {
         </div>
 
         {/* ── IMPACT STATS ── */}
-        <div className="fade-up-1 grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+        <div className="fade-up-1 grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10" dir={isUrdu ? "rtl" : "ltr"}>
           {BENEFITS.map((b, i) => (
-            <div
-              key={i}
-              className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-2xl p-5 text-center hover:bg-white/15 hover:scale-[1.02] transition-all shadow-lg"
-            >
+            <div key={i} className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-2xl p-5 text-center hover:bg-white/15 hover:scale-[1.02] transition-all shadow-lg">
               <div className="text-3xl mb-2">{b.icon}</div>
               <div className="text-3xl font-bold text-white mb-1">{b.stat}</div>
-              <p className="text-white/50 text-xs leading-tight">{b.label}</p>
+              <p className="text-white/50 text-xs leading-tight">{t(b.labelKey)}</p>
             </div>
           ))}
         </div>
 
         {/* ── FOUNDER SECTION ── */}
-        <div className="fade-up-2 mb-10">
+        <div className="fade-up-2 mb-10" dir={isUrdu ? "rtl" : "ltr"}>
           <div className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-2xl p-8 flex flex-col lg:flex-row gap-8 items-center shadow-xl">
-            {/* Avatar */}
             <div className="flex-shrink-0 text-center">
               <div className="founder-glow w-28 h-28 rounded-full bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center text-5xl mx-auto mb-3 border-4 border-emerald-500/30">
                 👨‍🌾
               </div>
               <p className="text-white font-bold text-lg">Dr. Asif Sharif</p>
-              <p className="text-emerald-400 text-xs uppercase tracking-wider">Founder, PQNK</p>
-              <p className="text-white/40 text-xs mt-1">Agronomist · Researcher</p>
+              <p className="text-emerald-400 text-xs uppercase tracking-wider">{t("founderRole")}</p>
+              <p className="text-white/40 text-xs mt-1">{t("founderTitle2")}</p>
             </div>
-
-            {/* Bio */}
             <div className="flex-1">
               <h2 className="text-xl font-bold text-white mb-3 flex items-center gap-2">
-                <span>🎓</span> The Visionary Behind PQNK
+                {t("founderSectionTitle")}
               </h2>
-              <p className="text-white/60 leading-relaxed mb-4 text-sm">
-                Dr. Asif Sharif is a Pakistani agronomist whose decades of research led to the
-                formulation of PQNK — a complete natural farming system tailored to Pakistan's
-                soil types, climate zones, and cultural farming practices.
-              </p>
-              <p className="text-white/60 leading-relaxed mb-5 text-sm">
-                Working in partnership with <strong className="text-white/80">Pakistan Agriculture Research (PAR)</strong>,
-                Dr. Sharif has demonstrated PQNK on hundreds of farms across Punjab and Sindh,
-                showing that sustainable yields without chemicals are not just possible — they are
-                economically superior. His knowledge, previously accessible only through direct
-                consultation, is now digitalised and made available to every farmer through this
-                platform.
-              </p>
+              <p className="text-white/60 leading-relaxed mb-4 text-sm">{t("founderBio1")}</p>
+              <p className="text-white/60 leading-relaxed mb-5 text-sm">{t("founderBio2")}</p>
               <div className="flex flex-wrap gap-2">
-                {["Natural Farming Pioneer", "PAR Collaborator", "PQNK Founder", "Agricultural Researcher"].map(tag => (
-                  <span key={tag} className="bg-emerald-700/40 border border-emerald-500/20 text-emerald-300 text-xs px-3 py-1 rounded-full">
-                    {tag}
+                {["founderTag0", "founderTag1", "founderTag2", "founderTag3"].map(key => (
+                  <span key={key} className="bg-emerald-700/40 border border-emerald-500/20 text-emerald-300 text-xs px-3 py-1 rounded-full">
+                    {t(key)}
                   </span>
                 ))}
               </div>
@@ -190,11 +137,11 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ── 6 PILLARS OF PQNK ── */}
-        <div className="fade-up-3 mb-10">
+        {/* ── 6 PILLARS ── */}
+        <div className="fade-up-3 mb-10" dir={isUrdu ? "rtl" : "ltr"}>
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-white drop-shadow">The 6 Pillars of PQNK</h2>
-            <span className="text-white/40 text-sm">Natural · Sustainable · Pakistani</span>
+            <h2 className="text-2xl font-bold text-white drop-shadow">{t("pillarsTitle")}</h2>
+            <span className="text-white/40 text-sm">{t("pillarsSubtitle")}</span>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
             {PQNK_PILLARS.map((pillar, i) => (
@@ -206,19 +153,19 @@ export default function Dashboard() {
                 <div className="flex items-start justify-between mb-3">
                   <span className="text-3xl">{pillar.icon}</span>
                   <span className="text-[10px] text-white/50 bg-white/10 border border-white/10 px-2.5 py-1 rounded-full uppercase tracking-wider font-medium">
-                    {pillar.tag}
+                    {t(pillar.tagKey)}
                   </span>
                 </div>
-                <h3 className="font-bold text-white text-base mb-2">{pillar.title}</h3>
-                <p className="text-white/55 text-sm leading-relaxed">{pillar.desc}</p>
+                <h3 className="font-bold text-white text-base mb-2">{t(pillar.titleKey)}</h3>
+                <p className="text-white/55 text-sm leading-relaxed">{t(pillar.descKey)}</p>
               </div>
             ))}
           </div>
         </div>
 
-        {/* ── CROPS SUPPORTED ── */}
-        <div className="fade-up-4 mb-10">
-          <h2 className="text-2xl font-bold text-white drop-shadow mb-6">Crops in the PQNK System</h2>
+        {/* ── CROPS ── */}
+        <div className="fade-up-4 mb-10" dir={isUrdu ? "rtl" : "ltr"}>
+          <h2 className="text-2xl font-bold text-white drop-shadow mb-6">{t("cropsTitle")}</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {CROP_CATEGORIES.map((crop, i) => (
               <button
@@ -227,28 +174,25 @@ export default function Dashboard() {
                 className="bg-white/10 backdrop-blur-xl border border-white/15 rounded-xl p-4 text-center hover:bg-white/20 hover:scale-[1.03] hover:border-emerald-400/30 transition-all group"
               >
                 <div className="text-3xl mb-2">{crop.icon}</div>
-                <p className="text-white font-semibold text-sm">{crop.name}</p>
-                <p className="text-white/40 text-[10px] mt-0.5 font-medium" dir="rtl">{crop.urdu}</p>
-                <p className="text-emerald-400/70 text-[10px] mt-1">{crop.status}</p>
+                <p className="text-white font-semibold text-sm">{isUrdu ? crop.urdu : crop.name}</p>
+                <p className="text-white/40 text-[10px] mt-0.5 font-medium">{isUrdu ? crop.name : crop.urdu}</p>
+                <p className="text-emerald-400/70 text-[10px] mt-1">{t(crop.statusKey)}</p>
               </button>
             ))}
           </div>
         </div>
 
         {/* ── CTA ── */}
-        <div className="fade-up-4 bg-gradient-to-r from-emerald-700/80 to-green-800/80 border border-emerald-500/30 backdrop-blur-xl rounded-2xl p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-2xl">
+        <div className="fade-up-4 bg-gradient-to-r from-emerald-700/80 to-green-800/80 border border-emerald-500/30 backdrop-blur-xl rounded-2xl p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-2xl" dir={isUrdu ? "rtl" : "ltr"}>
           <div>
-            <h2 className="text-2xl font-bold text-white mb-2">Have an agricultural question?</h2>
-            <p className="text-white/60 text-sm">
-              Our AI assistant is trained on the full PQNK knowledge base — ask anything about crops,
-              soil, irrigation, or pest control.
-            </p>
+            <h2 className="text-2xl font-bold text-white mb-2">{t("ctaTitle")}</h2>
+            <p className="text-white/60 text-sm">{t("ctaDesc")}</p>
           </div>
           <button
             onClick={() => navigate("/chatbot")}
             className="flex-shrink-0 px-8 py-3.5 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 text-white font-bold shadow-lg shadow-amber-400/30 hover:scale-105 transition-all text-sm whitespace-nowrap"
           >
-            🤖 Open AI Assistant
+            {t("ctaBtn")}
           </button>
         </div>
       </>

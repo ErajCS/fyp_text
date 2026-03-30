@@ -2514,6 +2514,8 @@ MIN_SCORE_THRESHOLD = 0.25
 TOP_K = 8
 
 # ================= MEMORY =================
+# NOTE: ENTITY_MEMORY is kept for acronym expansion only.
+# Conversation-aware context resolution is now handled by resolve_query_with_context().
 ENTITY_MEMORY = {"last_entity": None}
 ACRONYM_MEMORY = {}
 KNOWN_ACRONYMS = {"pqnk": "PQNK"}
@@ -2633,15 +2635,11 @@ def extract_entity(text):
 
 
 def resolve_entity(text):
+    """Legacy: only kept for acronym-based entity tracking (PQNK etc.).
+    Pronoun/reference resolution is now handled by resolve_query_with_context()."""
     entity = extract_entity(text)
     if entity:
         ENTITY_MEMORY["last_entity"] = entity
-        return text
-
-    if "it" in text.lower() or "its" in text.lower():
-        if ENTITY_MEMORY["last_entity"]:
-            return text + f" ({ENTITY_MEMORY['last_entity']})"
-
     return text
 
 
@@ -2660,6 +2658,57 @@ def expand_acronym_query(query):
 
     if any(x in query.lower() for x in ["meaning", "define", "full form"]):
         return f"what is {acronym} definition"
+
+    return query
+
+
+def resolve_query_with_context(query, history):
+    """
+    If the current query contains pronouns (it, its, that, this, they, them)
+    or is very short/ambiguous, rewrite it using the conversation history so
+    retrieval is grounded in the correct topic.
+
+    Returns the rewritten (or original) query string.
+    Only called when there IS conversation history.
+    """
+    AMBIGUOUS_SIGNALS = (
+        r'\bit\b|\bits\b|\bthat\b|\bthis\b|\bthey\b|\bthem\b|'
+        r'\bthose\b|\bsame\b|\bsaid crop\b|\bwhat about\b|\bwhat if\b|\bwhat will\b'
+    )
+    is_ambiguous = bool(re.search(AMBIGUOUS_SIGNALS, query.lower())) or len(query.split()) <= 5
+
+    if not is_ambiguous or not history:
+        return query
+
+    # Build a compact conversation snippet (last 4 turns max)
+    snippet_turns = history[-4:]
+    snippet = "\n".join(
+        f"{t['role'].upper()}: {t['content'][:300]}" for t in snippet_turns
+    )
+
+    prompt = (
+        "You are helping an agricultural chatbot understand a follow-up question.\n"
+        "Given the conversation history below and the user's latest query, "
+        "rewrite the query so it is self-contained and refers to the specific "
+        "topic being discussed (e.g. replace 'it' with the crop name, etc.).\n\n"
+        f"CONVERSATION HISTORY:\n{snippet}\n\n"
+        f"CURRENT QUERY: {query}\n\n"
+        "REWRITTEN QUERY (return ONLY the rewritten query, nothing else):"
+    )
+
+    try:
+        r = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.0,
+            max_tokens=80
+        )
+        rewritten = r.choices[0].message.content.strip().strip('"').strip("'")
+        if rewritten and rewritten != query:
+            print(f"   Context rewrite: '{query}' → '{rewritten}'")
+            return rewritten
+    except Exception as e:
+        print(f"WARNING Context rewrite failed: {e}")
 
     return query
 
@@ -2954,12 +3003,25 @@ def generate_answer(original_query, chunks, target_lang="en"):
 
 # ============ PIPELINE ============
 
-def rag_pipeline(query):
+def rag_pipeline(query, history=None):
+    """
+    Main RAG pipeline.
+    history: list of {role: 'user'/'assistant', content: str} dicts
+             representing recent conversation turns (from the frontend).
+    """
     print(f"\n💬 USER QUERY: {query}")
+    history = history or []
 
     query = normalize_query(query)
     query = normalize_intent(query)
-    query = resolve_entity(query)
+
+    # ── Context-aware pronoun/reference resolution ──────────────────────────
+    # Must run BEFORE entity resolution so the query already refers to the
+    # correct topic (e.g. 'rice') rather than getting resolved to 'PQNK'.
+    if history:
+        query = resolve_query_with_context(query, history)
+
+    query = resolve_entity(query)         # updates ENTITY_MEMORY for acronyms only
     query = expand_acronym_query(query)
 
     user_lang = detect_lang(query)

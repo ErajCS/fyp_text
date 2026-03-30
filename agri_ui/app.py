@@ -540,7 +540,30 @@ class Resource(db.Model):
     uploader      = db.relationship('User', foreign_keys=[uploaded_by])
 
 
-# Directory for uploaded files
+class Conversation(db.Model):
+    """A single chat session belonging to a user (like a GPT conversation)."""
+    __tablename__ = 'conversations'
+    id         = db.Column(db.Integer, primary_key=True)
+    user_id    = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
+    title      = db.Column(db.String(120), default='New Chat')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    messages   = db.relationship('ChatMessage', backref='conversation',
+                                  cascade='all, delete-orphan', lazy=True,
+                                  order_by='ChatMessage.timestamp')
+    owner      = db.relationship('User', foreign_keys=[user_id])
+
+
+class ChatMessage(db.Model):
+    """A single message (user or assistant) inside a Conversation."""
+    __tablename__ = 'chat_messages'
+    id              = db.Column(db.Integer, primary_key=True)
+    conversation_id = db.Column(db.Integer, db.ForeignKey('conversations.id'), nullable=False)
+    role            = db.Column(db.String(10), nullable=False)   # 'user' or 'assistant'
+    content         = db.Column(db.Text, nullable=False)
+    timestamp       = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 UPLOAD_DIR = os.path.join(BASE_DIR, '..', 'uploads')
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 ALLOWED_DOCS   = {'pdf', 'doc', 'docx', 'txt', 'pptx', 'xlsx'}
@@ -632,25 +655,173 @@ def logout():
     return redirect("/")
 
 # =======================
-# CHATBOT & AUDIO ROUTES
+# =======================
+# CONVERSATION API
+# =======================
+
+@app.route("/api/chat/new", methods=["POST"])
+@login_required
+def api_chat_new():
+    """Create a new empty conversation."""
+    conv = Conversation(user_id=current_user.id, title="New Chat")
+    db.session.add(conv)
+    db.session.commit()
+    return jsonify({"id": conv.id, "title": conv.title})
+
+
+@app.route("/api/chat/history", methods=["GET"])
+@login_required
+def api_chat_history():
+    """Return all conversations for the current user, newest first."""
+    convos = (Conversation.query
+              .filter_by(user_id=current_user.id)
+              .order_by(Conversation.updated_at.desc())
+              .all())
+    return jsonify([
+        {"id": c.id, "title": c.title,
+         "updated_at": c.updated_at.isoformat()}
+        for c in convos
+    ])
+
+
+@app.route("/api/chat/<int:conv_id>/messages", methods=["GET"])
+@login_required
+def api_chat_messages(conv_id):
+    """Return all messages for a specific conversation (full history, oldest first)."""
+    conv = Conversation.query.filter_by(id=conv_id, user_id=current_user.id).first_or_404()
+    return jsonify([
+        {"role": m.role, "content": m.content,
+         "timestamp": m.timestamp.isoformat()}
+        for m in conv.messages
+    ])
+
+
+@app.route("/api/chat/<int:conv_id>", methods=["DELETE"])
+@login_required
+def api_chat_delete(conv_id):
+    """Delete a conversation and all its messages."""
+    conv = Conversation.query.filter_by(id=conv_id, user_id=current_user.id).first_or_404()
+    db.session.delete(conv)
+    db.session.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/chat/<int:conv_id>/title", methods=["PATCH"])
+@login_required
+def api_chat_rename(conv_id):
+    """Rename a conversation."""
+    conv = Conversation.query.filter_by(id=conv_id, user_id=current_user.id).first_or_404()
+    new_title = (request.json or {}).get("title", "").strip()[:120]
+    if new_title:
+        conv.title = new_title
+        db.session.commit()
+    return jsonify({"id": conv.id, "title": conv.title})
+
+
+# =======================
+# WHISPER TRANSCRIPTION
+# =======================
+
+@app.route("/api/transcribe", methods=["POST"])
+@login_required
+def api_transcribe():
+    """Transcribe audio using OpenAI Whisper. Accepts multipart/form-data with fields:
+       - 'audio': the audio file
+       - 'language': ISO-639-1 code hint ('en' or 'ur') to force correct language
+    """
+    from openai import OpenAI as _OAI
+    audio_file = request.files.get("audio")
+    if not audio_file:
+        return jsonify({"error": "No audio file provided"}), 400
+    # Language hint from frontend: 'ur' for Urdu, 'en' for English
+    lang_hint = request.form.get("language", "").strip().lower()
+    whisper_lang = lang_hint if lang_hint in ("en", "ur") else None
+    try:
+        client = _OAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
+        kwargs = dict(
+            model="whisper-1",
+            file=("audio.webm", audio_file.stream, audio_file.mimetype or "audio/webm"),
+        )
+        if whisper_lang:
+            kwargs["language"] = whisper_lang   # forces Whisper to decode in this language
+        transcript = client.audio.transcriptions.create(**kwargs)
+        return jsonify({"transcript": transcript.text})
+    except Exception as e:
+        print(f"ERROR Whisper transcription failed: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+# =======================
+# CHATBOT ROUTES
 # =======================
 @app.route("/chatbot")
 @login_required
 def chatbot():
     return render_template("chatbot.html", user=current_user)
 
+
 @app.route("/get_response", methods=["POST"])
 @login_required
 def get_response():
-    user_message = request.json.get("msg", "").strip()
+    data = request.json or {}
+    user_message = data.get("msg", "").strip()
+    conv_id = data.get("conversation_id")  # int or None
+
     if not user_message:
         return jsonify({"response": "Please enter a message."}), 400
+
     try:
-        ai_response = rag_pipeline(user_message)
-        return jsonify({"response": ai_response})
+        # ── 1. Resolve / create conversation ──────────────────────────────────
+        if conv_id:
+            conv = Conversation.query.filter_by(
+                id=conv_id, user_id=current_user.id).first()
+        else:
+            conv = None
+
+        if conv is None:
+            conv = Conversation(user_id=current_user.id, title="New Chat")
+            db.session.add(conv)
+            db.session.flush()   # get conv.id without committing yet
+
+        # ── 2. Save user message ───────────────────────────────────────────────
+        user_msg_obj = ChatMessage(
+            conversation_id=conv.id, role="user", content=user_message)
+        db.session.add(user_msg_obj)
+
+        # ── 3. Auto-title on first user message ───────────────────────────────
+        if conv.title == "New Chat":
+            conv.title = user_message[:60]
+
+        # ── 4. Load history from DB (last 6 messages, for context) ────────────
+        recent = (ChatMessage.query
+                  .filter_by(conversation_id=conv.id)
+                  .order_by(ChatMessage.timestamp.desc())
+                  .limit(6)
+                  .all())
+        history = [{"role": m.role, "content": m.content}
+                   for m in reversed(recent)]
+
+        # ── 5. Run RAG pipeline ────────────────────────────────────────────────
+        ai_response = rag_pipeline(user_message, history=history)
+
+        # ── 6. Save AI reply & update conversation timestamp ──────────────────
+        ai_msg_obj = ChatMessage(
+            conversation_id=conv.id, role="assistant", content=ai_response)
+        db.session.add(ai_msg_obj)
+        conv.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        return jsonify({
+            "response": ai_response,
+            "conversation_id": conv.id,
+            "conversation_title": conv.title,
+        })
+
     except Exception as e:
+        db.session.rollback()
         print(f"ERROR RAG pipeline error: {e}")
-        return jsonify({"response": "WARNING Sorry, I encountered an error processing your request. Please try again."}), 500
+        import traceback; traceback.print_exc()
+        return jsonify({"response": "⚠️ Sorry, I encountered an error. Please try again."}), 500
 
 @app.route("/generate_audio", methods=["POST"])
 @login_required
