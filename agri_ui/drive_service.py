@@ -19,6 +19,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 _SCOPES = ["https://www.googleapis.com/auth/drive"]
+_REQUIRED_SCOPE = "https://www.googleapis.com/auth/drive"
 
 # ── Lazy-init ─────────────────────────────────────────────────────────────────
 _drive = None   # google.drive.v3 Resource object, or None
@@ -35,10 +36,24 @@ def _get_drive():
         from google.oauth2.credentials import Credentials
         from google.auth.transport.requests import Request
         try:
-            creds = Credentials.from_authorized_user_file(token_path, ['https://www.googleapis.com/auth/drive.file'])
-            if creds and creds.expired and creds.refresh_token:
+            creds = Credentials.from_authorized_user_file(token_path, _SCOPES)
+            # ── Scope mismatch guard ──────────────────────────────────────────
+            # If the saved token was authorised with a narrower scope (e.g.
+            # drive.file), it cannot list pre-existing folders and will always
+            # create duplicates.  Delete the token so the user re-authorises.
+            token_scopes = set(creds.scopes or [])
+            if _REQUIRED_SCOPE not in token_scopes:
+                logger.warning(
+                    f"token.json has insufficient scopes {token_scopes}. "
+                    "Deleting stale token — please re-run generate_oauth_token.py"
+                )
+                os.remove(token_path)
+                creds = None
+            elif creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
-            logger.info("Authenticated via OAuth2 (token.json)")
+                logger.info("Authenticated via OAuth2 (token.json) — token refreshed")
+            else:
+                logger.info("Authenticated via OAuth2 (token.json)")
         except Exception as e:
             logger.warning(f"OAuth2 auth failed, falling back to service account: {e}")
             creds = None

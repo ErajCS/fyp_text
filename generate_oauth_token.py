@@ -3,8 +3,10 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 
-# If modifying these scopes, delete the file token.json.
-SCOPES = ['https://www.googleapis.com/auth/drive.file', 'https://www.googleapis.com/auth/drive.readonly']
+# ⚠️  SCOPE REQUIREMENT: Must be full drive scope so the app can LIST existing
+# folders (PDFs, Images, Videos) and upload INTO them instead of duplicating.
+# drive.file / drive.readonly scopes cannot list folders created outside the app.
+SCOPES = ['https://www.googleapis.com/auth/drive']
 
 def main():
     """Generates a token.json for Google Drive API access."""
