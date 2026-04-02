@@ -6,13 +6,19 @@ from openai import OpenAI
 from deep_translator import GoogleTranslator
 import os
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
+except Exception:
+    pass
+
 # ---------------- CONFIG ----------------
 IMAGE_ROOT = r"C:\\Users\\smwaj\\fyp_text\\images"
 SUPPORTED_EXTS = {".png", ".jpg", ".jpeg"}
 MODEL = "gpt-4o-mini"
 # ---------------------------------------
 
-client = OpenAI(OPENAI_API_KEY_2 = os.getenv("OPENAI_API_KEY_2")) 
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 logging.basicConfig(
     level=logging.INFO,
