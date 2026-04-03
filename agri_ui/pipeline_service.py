@@ -5,7 +5,11 @@ Triggered by the Flask upload endpoint in app.py after a file is saved.
 Runs as a background thread so the HTTP response is returned immediately.
 
 Scenarios:
-  - document  → extraction.py → ingest_data.py + ingest_to_postgres.py
+  - document  → extraction.py (text extraction + OCR)
+               → [NEW] extracting_images_from_pdfs.py (extract embedded images)
+                 → detection_of_lang_and_renaming.py (per extracted image)
+                 → translating_images.py (GPT-4o-mini bilingual description)
+               → ingest_data.py + ingest_to_postgres.py (text + image txts)
   - image     → detection_of_lang_and_renaming.py → translating_images.py
                 → ingest_data.py + ingest_to_postgres.py
   - video     → local_whisper.py → local_refining.py → translating_video.py
@@ -270,7 +274,9 @@ def _sync_to_drive_step(file_path: str, file_type: str, category: str, original_
 def _run_document_pipeline(file_path: str, category: str) -> int:
     """
     Runs extraction.py → qdrant + postgres.
-    Returns chunk count indexed.
+    Also extracts any embedded images from the PDF and processes them through
+    the full image pipeline (lang detection → GPT-4o-mini description → ingest).
+    Returns total chunk count indexed.
     """
     print(f"\n[Pipeline] 📄 DOCUMENT: {os.path.basename(file_path)}")
 
@@ -290,7 +296,7 @@ def _run_document_pipeline(file_path: str, category: str) -> int:
     processor = VisionPDFTranslator(work_dir)
     processor.process_pdf(pathlib.Path(dest_pdf))
 
-    # Step 2 — Collect the generated txt files
+    # Step 2 — Collect the generated txt files from text extraction
     base = pathlib.Path(dest_pdf).stem
     txt_files = [
         str(pathlib.Path(work_dir) / f"{base}_urdu.txt"),
@@ -300,17 +306,114 @@ def _run_document_pipeline(file_path: str, category: str) -> int:
 
     if not txt_files:
         print(f"[Pipeline] ⚠️  No txt files generated for {os.path.basename(file_path)}. Check extraction logs.")
+
+    if txt_files:
+        print(f"[Pipeline] Generated {len(txt_files)} txt file(s): {[os.path.basename(t) for t in txt_files]}")
+
+    # Step 3 — Ingest text content to Qdrant + PostgreSQL
+    total_chunks = 0
+    if txt_files:
+        total_chunks += _ingest_txt_files_to_qdrant(txt_files, category, "document")
+        _ingest_txt_files_to_postgres(txt_files, category)
+
+    # ── STEP 4 — Extract images embedded in the PDF and run image pipeline ──
+    total_chunks += _run_pdf_image_sub_pipeline(dest_pdf, work_dir, category)
+
+    return total_chunks
+
+
+def _run_pdf_image_sub_pipeline(pdf_path: str, work_dir: str, category: str) -> int:
+    """
+    Extracts all meaningful images embedded in *pdf_path* using the same logic
+    as extracting_images_from_pdfs.py, then passes each extracted image through
+    the standard image pipeline:
+      1. detect_language + rename  (_eng / _urdu suffix)
+      2. GPT-4o-mini bilingual description → .txt files
+      3. Ingest txt files to Qdrant + PostgreSQL
+    Returns total chunk count from image descriptions.
+    """
+    try:
+        from extracting_images_from_pdfs import (
+            extract_images_from_pdf,
+            load_logo_templates,
+        )
+        from detection_of_lang_and_renaming import detect_language, rename_image
+        from translating_images import ImageDescriber
+        from PIL import Image
+    except ImportError as e:
+        print(f"[Pipeline] ⚠️  Image sub-pipeline import failed ({e}). Skipping PDF image extraction.")
         return 0
 
-    print(f"[Pipeline] Generated {len(txt_files)} txt file(s): {[os.path.basename(t) for t in txt_files]}")
+    # Dedicated subfolder so extracted images don't collide with document txt files
+    img_out_dir = os.path.join(work_dir, f"{pathlib.Path(pdf_path).stem}_images")
+    os.makedirs(img_out_dir, exist_ok=True)
 
-    # Step 3 — Ingest to Qdrant
-    chunks = _ingest_txt_files_to_qdrant(txt_files, category, "document")
+    print(f"[Pipeline] 🖼️  Extracting embedded images from PDF: {os.path.basename(pdf_path)}")
 
-    # Step 4 — Ingest to PostgreSQL
-    _ingest_txt_files_to_postgres(txt_files, category)
+    # Load logo templates to filter decorative/logo images (may be empty if folder absent)
+    logo_template_dir = os.path.join(REPO_ROOT, "text_pdfs", "logo_templates")
+    logo_templates = load_logo_templates(logo_template_dir)
 
-    return chunks
+    try:
+        extract_images_from_pdf(pdf_path, img_out_dir, logo_templates)
+    except Exception as e:
+        print(f"[Pipeline] ⚠️  Image extraction from PDF failed: {e}")
+        return 0
+
+    # Collect extracted image files
+    extracted_images = [
+        f for f in pathlib.Path(img_out_dir).iterdir()
+        if f.suffix.lower() in {".jpg", ".jpeg", ".png"}
+    ]
+
+    if not extracted_images:
+        print(f"[Pipeline] ℹ️  No meaningful images found inside PDF.")
+        return 0
+
+    print(f"[Pipeline] 🖼️  Found {len(extracted_images)} image(s) inside PDF — processing each...")
+
+    total_image_chunks = 0
+
+    for img_path in extracted_images:
+        try:
+            # Step A — Language detection + rename to *_eng.ext or *_urdu.ext
+            dest_img = str(img_path)
+            pil_img  = Image.open(dest_img).convert("RGB")
+            lang     = detect_language(pil_img)
+
+            if lang in ["eng", "urdu"]:
+                rename_image(dest_img, lang)
+                name, ext  = os.path.splitext(dest_img)
+                dest_img   = f"{name}_{lang}{ext}"
+            else:
+                # Default to English when language is ambiguous
+                print(f"[Pipeline] ℹ️  Language ambiguous for {img_path.name}, defaulting to 'eng'")
+                rename_image(dest_img, "eng")
+                name, ext  = os.path.splitext(dest_img)
+                dest_img   = f"{name}_eng{ext}"
+
+            # Step B — GPT-4o-mini bilingual vision description → *.txt files
+            describer = ImageDescriber(img_out_dir)
+            describer.process_image(pathlib.Path(dest_img))
+
+            # Step C — Collect generated txt files for this image
+            stem       = pathlib.Path(dest_img).stem
+            img_base   = stem.replace("_urdu", "").replace("_eng", "")
+            img_txts   = [str(p) for p in pathlib.Path(img_out_dir).glob(f"{img_base}*.txt")]
+
+            if img_txts:
+                total_image_chunks += _ingest_txt_files_to_qdrant(img_txts, category, "document_image")
+                _ingest_txt_files_to_postgres(img_txts, category)
+                print(f"[Pipeline]   ✅ Indexed {len(img_txts)} txt(s) for image: {img_path.name}")
+            else:
+                print(f"[Pipeline]   ⚠️  No txt generated for image: {img_path.name}")
+
+        except Exception as e:
+            print(f"[Pipeline]   ⚠️  Failed processing image {img_path.name}: {e}")
+            continue
+
+    print(f"[Pipeline] ✅ PDF image sub-pipeline complete: {total_image_chunks} chunks from {len(extracted_images)} image(s).")
+    return total_image_chunks
 
 
 # ==============================================================================

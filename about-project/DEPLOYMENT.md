@@ -1,217 +1,141 @@
-# 🌿 PQNK Knowledge Intelligence System — Free Deployment Guide
+# 🚀 PQNK Knowledge Intelligence System — Comprehensive Deployment & Architecture Guide
 
-A step-by-step guide to deploy this project **entirely for free**.
-
----
-
-## Architecture Overview
-
-```
-Users → React Frontend (Vercel) → Flask REST API (Railway) → PostgreSQL (Railway)
-                                    ↓
-                              Qdrant Cloud (free tier)
-                              OpenAI API (paid API key required)
-```
+This document provides a detailed, step-by-step guide to take the PQNK system from your local development environment to a production reality.
 
 ---
 
-## Prerequisites
+## 1. Where to Deploy: Azure vs. "Free" Platforms
 
-Before starting, make sure you have:
-- ✅ A [GitHub](https://github.com) account
-- ✅ An [OpenAI](https://platform.openai.com) API key
-- ✅ A [Qdrant Cloud](https://cloud.qdrant.io) account (free tier)
-- ✅ A [Gmail](https://gmail.com) account with an [App Password](https://myaccount.google.com/apppasswords) configured
+**Verdict:** You **MUST** use a Virtual Machine (like Microsoft Azure). "Free" Platforms (like Vercel, Render, Heroku free tiers) will **NOT** work for the backend.
 
----
+### Why not entirely free platforms?
+While your React Frontend can be hosted for free on Vercel, your Flask Backend contains heavy data science pipelines. Specifically:
+1. **Faster-Whisper (`large-v3`)**: Requires at least 4GB to 8GB of RAM to transcribe audio without crashing.
+2. **PyMuPDF & Tesseract OCR**: Consumes significant CPU and memory when processing large documents.
+3. **Background Daemon Threads**: Your ingest pipeline runs asynchronous threading (`threading.Thread`). Serverless environments (like Vercel functions, Heroku basic) freeze threads as soon as the HTTP request returns, which will instantly kill your upload pipelines.
 
-## Step 1 — Push Code to GitHub
-
-```bash
-cd c:\Users\smwaj\fyp_text
-git init
-git add .
-git commit -m "Initial commit"
-git remote add origin https://github.com/YOUR_USERNAME/pqnk-system.git
-git push -u origin main
-```
-
-> **Important:** Ensure `.env` is in `.gitignore` (it already is). Never push secrets to GitHub.
+### The Recommended Solution: Azure for Students
+As a university student, you get **$100 in free Azure credits** plus free services. 
+- You should deploy the **Frontend on Vercel** (Free).
+- You should deploy the **Backend + PostgreSQL on an Azure Virtual Machine (VM)** (e.g., `Standard_B2ms` or `Standard_B4ms` running Ubuntu Linux).
 
 ---
 
-## Step 2 — Deploy Backend + Database on Railway (Free)
+## 2. How the System Looks Different After Deployment
 
-[Railway](https://railway.app) gives you $5/month free credit — enough for a small Flask + PostgreSQL app.
+Currently, when you run locally, you open two terminals, type `python app.py`, and `npm run dev`. In production, the system architecture shifts from a "Debug" state to a "Production" state:
 
-### 2a. Create a Railway account
-1. Go to [railway.app](https://railway.app) → **Login with GitHub**
+| Component | Local Development (Current) | Production Deployment (Future) |
+| :--- | :--- | :--- |
+| **Frontend Server** | Vite Dev Server (`localhost:5173`) | Vercel Global Edge CDN (`pqnk.vercel.app`) |
+| **Backend Server** | Flask Development Server (`localhost:5000`) | Gunicorn WSGI Server bound to Nginx Reverse Proxy |
+| **Network Security** | HTTP | HTTPS (SSL/TLS certificates provided via Certbot/Let's Encrypt) |
+| **Database (PostgreSQL)** | Local Windows pgAdmin/Postgres Service | PostgreSQL installed on Linux Azure VM |
+| **Continuous Uptime** | Stops when you close the terminal window | Managed by `systemd` (runs forever in the background) |
+| **Vector Database** | Qdrant Cloud | Continues using Qdrant Cloud |
 
-### 2b. Deploy PostgreSQL
-1. New Project → **Add Database** → **PostgreSQL**
-2. Click the PostgreSQL service → **Variables** tab → copy `DATABASE_URL`
+### What EXACTLY needs to be deployed?
+To make the system live globally, you must independently deploy:
+1. **The Database:** Export your local PostgreSQL database schemas/tables and recreate them on the cloud VM.
+2. **The Backend (Flask API + Pipelines):** Hosted on the Azure VM, running behind Gunicorn and Nginx. This includes `ffmpeg`, `Tesseract`, and all Python models.
+3. **The Frontend (React):** Built and deployed to Vercel, programmed to send API requests to your public Azure VM's IP address/Domain instead of `localhost:5000`.
 
-### 2c. Deploy Flask Backend
-1. In the same project → **New Service** → **GitHub Repo** → select your repo
-2. Set the root directory: `agri_ui`  
-3. Set start command:
+---
+
+## 3. Step-by-Step Deployment Guide
+
+### Step A: Set up the Azure Virtual Machine (Backend & Database)
+1. Go to the [Azure Portal](https://portal.azure.com/) and sign in with your student account.
+2. Create a new **Virtual Machine**.
+   - **OS:** Ubuntu Server 22.04 LTS (or 24.04).
+   - **Size:** Select `Standard_B2ms` (2 vCPUs, 8GB RAM) or similar.
+   - **Inbound Ports:** Allow `SSH (22)`, `HTTP (80)`, and `HTTPS (443)`.
+3. SSH into your newly created VM from your local terminal:
+   ```bash
+   ssh azureuser@<YOUR_VM_PUBLIC_IP>
    ```
-   gunicorn app:app
-   ```
-4. Add environment variables (click **Variables**):
 
-| Variable | Value |
-|---|---|
-| `DATABASE_URL` | Paste from step 2b |
-| `OPENAI_API_KEY` | Your OpenAI key |
-| `QDRANT_URL` | Your Qdrant cluster URL |
-| `QDRANT_API_KEY` | Your Qdrant API key |
-| `MAIL_USERNAME` | Your Gmail address |
-| `MAIL_PASSWORD` | Your Gmail App Password |
-| `SECRET_KEY` | Any random 32-char string |
-
-5. Railway will automatically detect Python and install `requirements.txt`
-6. Once deployed, copy your backend URL (e.g. `https://pqnk-backend.up.railway.app`)
-
-### 2d. Install Gunicorn (if not already in requirements)
+### Step B: Environment Preparation on the Linux VM
+Once inside the VM, install system dependencies:
 ```bash
-pip install gunicorn
-pip freeze > agri_ui/requirements.txt
-git add agri_ui/requirements.txt && git commit -m "Add gunicorn" && git push
+sudo apt update
+sudo apt install python3-pip python3-venv postgresql postgresql-contrib nginx tesseract-ocr tesseract-ocr-urd ffmpeg -y
 ```
+Notice we are installing `ffmpeg` and `tesseract-ocr` at the OS level, eliminating the need to package the `.exe` files you currently use on Windows.
 
----
+### Step C: Deploy the PostgreSQL Database
+1. Switch to the postgres user and open the console:
+   ```bash
+   sudo -u postgres psql
+   ```
+2. Create the PQNK database and user:
+   ```sql
+   CREATE DATABASE pqnk_db;
+   CREATE USER pqnk_user WITH PASSWORD 'your_secure_password';
+   GRANT ALL PRIVILEGES ON DATABASE pqnk_db TO pqnk_user;
+   ALTER DATABASE pqnk_db OWNER TO pqnk_user;
+   \q
+   ```
+3. Run the schema creation script from your cloned repository on the VM.
 
-## Step 3 — Update Vite Proxy for Production
+### Step D: Deploy the Flask Backend
+1. Clone your GitHub repository inside the VM:
+   ```bash
+   git clone https://github.com/YOUR_GITHUB/pqnk-system.git
+   cd pqnk-system
+   ```
+2. Create a Python virtual environment and install requirements:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install -r requirements.txt
+   pip install gunicorn  # Critical for production WSGI
+   ```
+3. Create a `.env` file in the VM root folder with your API Keys (OpenAI, Qdrant, Google Drive credentials json, PostgreSQL connection).
+4. Run the backend constantly using a `systemd` service file so it restarts if it crashes.
 
-In `frontend-react/PQNK_Frontend/vite.config.js`, the proxy target needs to point to your Railway URL **during build**. Instead, for production, the React app will call the API using an environment variable.
+### Step E: Configure Nginx
+Nginx will accept global internet requests on port 80 (HTTP) and route them to your internal Gunicorn app running on port 5000.
+```bash
+sudo nano /etc/nginx/sites-available/pqnk
+```
+```nginx
+server {
+    listen 80;
+    server_name YOUR_VM_PUBLIC_IP;
 
-Edit `vite.config.js`:
-```js
-server: {
-  proxy: {
-    "/api": {
-      target: process.env.VITE_API_URL || "http://localhost:5000",
-      changeOrigin: true,
-    },
-    "/get_response": { target: process.env.VITE_API_URL || "http://localhost:5000", changeOrigin: true },
-    "/generate_audio": { target: process.env.VITE_API_URL || "http://localhost:5000", changeOrigin: true },
-  }
+    # Allow large file uploads for videos/PDFs
+    client_max_body_size 100M; 
+
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
 }
 ```
+Enable it and test Nginx.
+
+### Step F: Deploy the React Frontend to Vercel
+1. In your local VSCode, open `frontend-react/PQNK_Frontend/vite.config.js`. You will change the proxy from `localhost:5000` to point directly to your Azure VM IP address/Domain name. Alternatively, in production, use absolute URLs via `process.env.VITE_API_URL` inside your Axios calls.
+2. Push your final code to GitHub.
+3. Log into [Vercel.com](https://vercel.com/) and select "Add New Project".
+4. Import your GitHub Repo.
+5. Set the Framework Preset to **Vite**, and the Root Directory to `frontend-react/PQNK_Frontend`.
+6. Add the Environment Variable: `VITE_API_URL` = `http://<YOUR_AZURE_VM_IP>`.
+7. Click **Deploy**. Vercel will give you a public URL (e.g., `https://pqnk-frontend.vercel.app`).
+
+### Step G: Final Linkage (CORS)
+In your Azure VM, update `app.py` so the `CORS` configuration allows requests from your new Vercel domain, replacing `localhost:5173`. Restart the Gunicorn service.
 
 ---
 
-## Step 4 — Deploy React Frontend on Vercel (Free)
+## 4. Summary
 
-[Vercel](https://vercel.com) deploys React/Vite apps for free with unlimited bandwidth.
-
-1. Go to [vercel.com](https://vercel.com) → **Login with GitHub**
-2. **New Project** → Import your GitHub repo
-3. Set **Root Directory** to: `frontend-react/PQNK_Frontend`
-4. Framework preset: **Vite**
-5. Add Environment Variable:
-   - `VITE_API_URL` = `https://pqnk-backend.up.railway.app` (your Railway URL)
-6. Click **Deploy** — Vercel builds and hosts it automatically
-
----
-
-## Step 5 — Allow Cross-Origin Requests (CORS)
-
-In `agri_ui/app.py`, update your CORS config to allow your Vercel domain:
-
-```python
-from flask_cors import CORS
-CORS(app, supports_credentials=True, origins=[
-    "http://localhost:5173",
-    "https://your-app.vercel.app",   # ← replace with your Vercel URL
-])
-```
-
-Commit and push — Railway will auto-redeploy.
-
----
-
-## Step 6 — Initialise the Database
-
-After Railway deploys, run this once to create all tables:
-
-```bash
-railway run python -c "from app import app, db; \
-  app.app_context().__enter__(); db.create_all(); print('Done')"
-```
-
-Or SSH into Railway shell and run it from there.
-
----
-
-## Step 7 — Seed Admin Accounts
-
-From Railway shell or locally (with `DATABASE_URL` set):
-
-```bash
-python seed_users.py
-```
-
-This creates:
-- `admin@pqnk.com` / `admin123`
-- `superadmin@pqnk.com` / `super123`
-
-> ⚠️ Change these passwords immediately after first login.
-
----
-
-## Step 8 — Configure Qdrant (Vector Database)
-
-Your Qdrant collection `pqnk_v2` must be populated before the chatbot works.
-
-1. Log in to [cloud.qdrant.io](https://cloud.qdrant.io)
-2. Create a free cluster → copy the URL and API key
-3. Add them to Railway environment variables
-4. Run your ingestion pipeline locally pointing to the cloud Qdrant:
-   ```bash
-   python ingest_to_postgres.py
-   ```
-
----
-
-## Step 9 — Final Checks
-
-| Check | How |
-|---|---|
-| Login works | Visit your Vercel URL → login |
-| Admin dashboard loads | Login as admin@pqnk.com |
-| Chatbot responds | Ask a PQNK question |
-| OTP emails arrive | Register a new account |
-| Repository upload works | Admin → Content Management |
-
----
-
-## Cost Summary
-
-| Service | Free Tier |
-|---|---|
-| **Vercel** (Frontend) | ✅ Unlimited (Hobby plan) |
-| **Railway** (Flask + PostgreSQL) | ✅ $5/month credit |
-| **Qdrant Cloud** | ✅ 1 cluster, 1GB free |
-| **Gmail SMTP** | ✅ Free with App Password |
-| **OpenAI API** | ❌ ~$0.01–0.05 per chatbot query |
-
-> The only cost is OpenAI API usage. For an FYP demo with low traffic this will be negligible (a few dollars/month at most).
-
----
-
-## Local Development (Quick Start)
-
-```bash
-# Backend
-cd c:\Users\smwaj\fyp_text
-python agri_ui\app.py
-
-# Frontend (new terminal)
-cd frontend-react\PQNK_Frontend
-npm install
-npm run dev
-```
-
-Visit `http://localhost:5173`
+**To successfully deploy, you will:**
+1. Put Frontend on Vercel.
+2. Put Backend + Postgres database on an Azure Ubuntu Linux VM.
+3. Adjust frontend Axios calls to point to the VM's public IP instead of localhost.
+4. Adjust Backend CORS to allow requests from the Vercel domain instead of localhost.
+5. Use Nginx and Gunicorn to serve Flask instead of the debug runner.
+6. Continue using the cloud Qdrant Vector database as you are doing now.
