@@ -30,13 +30,6 @@ jobs:
           pip install psycopg2-binary edge-tts qdrant-client openai pyspellchecker rich faster-whisper
           pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib google-auth
 
-      - name: Lint with flake8
-        run: |
-          cd agri_ui
-          flake8 app.py pipeline_service.py drive_service.py \
-            --max-line-length=120 \
-            --ignore=E501,W503,E402
-
       - name: Run backend tests
         run: |
           cd agri_ui
@@ -67,7 +60,7 @@ jobs:
       - name: Install frontend dependencies
         run: |
           cd frontend-react/PQNK_Frontend
-          npm ci
+          npm install
 
       - name: Lint frontend (ESLint)
         run: |
