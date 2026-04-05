@@ -30,6 +30,7 @@ function ProtectedRoute({ element, allowedRoles }) {
       try { return JSON.parse(localStorage.getItem("user")); } catch { return null; }
     })();
     if (cached?.role && allowedRoles.includes(cached.role)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStatus("ok");
     }
     // Always verify with server (server is the source of truth)

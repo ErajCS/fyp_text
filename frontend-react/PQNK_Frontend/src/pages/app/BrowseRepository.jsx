@@ -35,7 +35,9 @@ export default function BrowseRepository() {
             .finally(() => setLoading(false));
     }, [page, search, typeFilter, catFilter]);
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => { fetchResources(); }, [fetchResources]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => { setPage(1); }, [search, typeFilter, catFilter]);
 
     const totalPages = Math.ceil(total / PER_PAGE);
