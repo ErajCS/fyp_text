@@ -2,12 +2,13 @@ import AdminLayout from "../../layouts/AdminLayout";
 import { useState, useEffect, useCallback } from "react";
 import useAuth from "../../hooks/useAuth";
 
-const FILE_TYPES = ["document", "image", "video"];
-const FILE_TYPE_ICONS = { document: "📄", image: "🖼️", video: "🎥" };
+const FILE_TYPES = ["document", "image", "video", "audio"];
+const FILE_TYPE_ICONS = { document: "📄", image: "🖼️", video: "🎥", audio: "🎵" };
 const ACCEPT = {
     document: ".pdf,.doc,.docx,.txt,.pptx,.xlsx",
     image: ".jpg,.jpeg,.png,.gif,.webp,.svg",
     video: ".mp4,.webm,.mov,.avi,.mkv",
+    audio: ".mp3,.m4a,.wav,.ogg,.flac",
 };
 
 const DEFAULT_FORM = {
@@ -207,7 +208,7 @@ export default function Repository() {
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
                                         {form.file_type === "video" ? "Video File (optional)" : "File *"}
                                     </label>
-                                    <input type="file" accept={ACCEPT[form.file_type]}
+                                    <input type="file" accept={ACCEPT[form.file_type] || ""}
                                         onChange={e => setForm({ ...form, file: e.target.files[0] || null })}
                                         className="w-full text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-green-50 file:text-green-700 file:text-sm file:font-medium hover:file:bg-green-100"
                                         required={form.file_type !== "video"} />
@@ -221,6 +222,12 @@ export default function Repository() {
                                             placeholder="https://youtube.com/watch?v=..."
                                             className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-400/40"
                                             required />
+                                    </div>
+                                )}
+                                {/* Audio notice: invisible in repository, AI-only */}
+                                {form.file_type === "audio" && (
+                                    <div className="px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-700 text-xs">
+                                        🎵 <strong>Audio-only ingestion:</strong> This recording will be transcribed, translated, and added to the AI knowledge base. It will <em>not</em> appear in the Browse Repository.
                                     </div>
                                 )}
                                 {/* Submit */}

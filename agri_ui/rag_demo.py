@@ -3008,6 +3008,15 @@ def rag_pipeline(query, history=None):
     Main RAG pipeline.
     history: list of {role: 'user'/'assistant', content: str} dicts
              representing recent conversation turns (from the frontend).
+
+    Returns a dict:
+        {
+            "response": str,   # The answer text
+            "sources": [       # Unique source documents used for the answer
+                {"name": str, "link": str},
+                ...
+            ]
+        }
     """
     print(f"\n💬 USER QUERY: {query}")
     history = history or []
@@ -3016,26 +3025,41 @@ def rag_pipeline(query, history=None):
     query = normalize_intent(query)
 
     # ── Context-aware pronoun/reference resolution ──────────────────────────
-    # Must run BEFORE entity resolution so the query already refers to the
-    # correct topic (e.g. 'rice') rather than getting resolved to 'PQNK'.
     if history:
         query = resolve_query_with_context(query, history)
 
-    query = resolve_entity(query)         # updates ENTITY_MEMORY for acronyms only
+    query = resolve_entity(query)
     query = expand_acronym_query(query)
 
     user_lang = detect_lang(query)
+
+    def _extract_sources(chunks):
+        """Deduplicate sources from retrieved chunks and build source list."""
+        seen = set()
+        sources = []
+        for c in chunks:
+            payload  = c.get("payload", {})
+            doc_name = payload.get("doc_name", "")
+            # drive_view_link may have been stored in source_path or a dedicated field
+            link     = payload.get("drive_view_link", "") or payload.get("source_path", "")
+            # Strip internal filesystem paths from links
+            if link and not link.startswith("http"):
+                link = ""
+            if doc_name and doc_name not in seen:
+                seen.add(doc_name)
+                sources.append({"name": doc_name, "link": link})
+        return sources
 
     # Multi-hop
     if is_multi_hop_question(query):
         chunks = multi_hop_retrieval(query)
         answer = generate_answer(query, chunks, target_lang=("ur" if user_lang == "ur" else "en"))
-        return answer
+        return {"response": answer, "sources": _extract_sources(chunks)}
 
     # Normal hybrid retrieval
     chunks = retrieve_chunks_hybrid(query, top_k=TOP_K)
     answer = generate_answer(query, chunks, target_lang=("ur" if user_lang == "ur" else "en"))
-    return answer
+    return {"response": answer, "sources": _extract_sources(chunks)}
 
 
 # ============ TEST ============

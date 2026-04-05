@@ -178,11 +178,16 @@ function AudioButton({ text }) {
 function MarkdownMessage({ content }) {
   const lines = content.split("\n");
   const renderInline = (text) => {
-    const parts = text.split(/(\*\*[^*]+\*\*|__[^_]+__)/g);
+    // Split on **bold**, __bold__, *italic*, _italic_
+    const parts = text.split(/(\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_)/g);
     return parts.map((part, i) => {
       if (/^\*\*[^*]+\*\*$/.test(part) || /^__[^_]+__$/.test(part)) {
         const inner = part.replace(/^\*\*|\*\*$|^__|__$/g, "");
         return <strong key={i} className="font-semibold text-green-200">{inner}</strong>;
+      }
+      if (/^\*[^*]+\*$/.test(part) || /^_[^_]+_$/.test(part)) {
+        const inner = part.replace(/^\*|\*$|^_|_$/g, "");
+        return <em key={i} className="italic text-white/90">{inner}</em>;
       }
       return <span key={i}>{part}</span>;
     });
@@ -235,8 +240,16 @@ function MarkdownMessage({ content }) {
       flushList();
       const text = trimmed.replace(/^\d+\.\s/, "");
       const numItems = [text];
-      while (i + 1 < lines.length && /^\d+\.\s/.test(lines[i + 1].trim())) {
-        i++; numItems.push(lines[i].trim().replace(/^\d+\.\s/, ""));
+      // Look ahead — skip blank lines between numbered items (GPT often inserts them)
+      let peek = i + 1;
+      while (peek < lines.length) {
+        const peekLine = lines[peek].trim();
+        if (peekLine === "") { peek++; continue; }  // skip blank separator
+        if (/^\d+\.\s/.test(peekLine)) {
+          numItems.push(peekLine.replace(/^\d+\.\s/, ""));
+          i = peek;
+          peek++;
+        } else { break; }
       }
       rendered.push(
         <ol key={`ol-${i}`} className="space-y-1 my-1.5 pl-1">
@@ -266,6 +279,7 @@ function MarkdownMessage({ content }) {
 // ── Message Bubble ─────────────────────────────────────────────────────────────
 function MessageBubble({ msg, index, copiedId, onCopy, isStreaming }) {
   const isUser = msg.role === "user";
+  const sources = (!isUser && msg.sources && msg.sources.length > 0) ? msg.sources : [];
   return (
     <div
       className={`flex gap-3 ${isUser ? "flex-row-reverse" : "flex-row"} items-end`}
@@ -296,6 +310,34 @@ function MessageBubble({ msg, index, copiedId, onCopy, isStreaming }) {
             </>
           )}
         </div>
+
+        {/* Sources panel — shown below bot replies when sources are present */}
+        {sources.length > 0 && (
+          <div className="mt-2 w-full">
+            <p className="text-white/40 text-[10px] font-semibold uppercase tracking-wider mb-1">📚 Sources</p>
+            <div className="flex flex-col gap-0.5">
+              {sources.slice(0, 5).map((s, idx) => {
+                // Prefer internal file_url (opens the actual PDF/image in repo),
+                // fall back to drive_view_link, then render as plain text
+                const href = s.file_url || s.link || null;
+                return (
+                  <div key={idx} className="flex items-center gap-1.5">
+                    <span className="text-emerald-400 text-[10px]">•</span>
+                    {href ? (
+                      <a href={href} target="_blank" rel="noopener noreferrer"
+                        className="text-[11px] text-emerald-300 hover:text-emerald-100 underline underline-offset-2 transition-colors truncate max-w-[280px]"
+                        title={s.name}>
+                        {s.name}
+                      </a>
+                    ) : (
+                      <span className="text-[11px] text-white/50 truncate max-w-[280px]" title={s.name}>{s.name}</span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div className={`flex items-center gap-2 mt-1 ${isUser ? "flex-row-reverse" : ""}`}>
           <span className="text-white/40 text-xs">{formatTime(msg.timestamp)}</span>
@@ -489,6 +531,7 @@ export default function Chatbot() {
       if (!res.ok) throw new Error("Status " + res.status);
       const data = await res.json();
       const fullText = data.response || "No response received.";
+      const sources = Array.isArray(data.sources) ? data.sources : [];
 
       // Simulate streaming by revealing text word-by-word
       const words = fullText.split(" ");
@@ -503,6 +546,15 @@ export default function Chatbot() {
         });
         // Faster for longer texts to keep speed reasonable
         if (w < words.length - 1) await new Promise((r) => setTimeout(r, Math.max(12, 35 - words.length * 0.2)));
+      }
+
+      // Attach sources to the final message (after streaming completes)
+      if (sources.length > 0) {
+        setMessages((prev) => {
+          const updated = [...prev];
+          updated[updated.length - 1] = { ...updated[updated.length - 1], sources };
+          return updated;
+        });
       }
 
       // Update conversation tracking

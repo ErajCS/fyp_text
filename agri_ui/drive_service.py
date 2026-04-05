@@ -234,4 +234,9 @@ def get_mime_type(filename: str) -> str:
         "mp4":  "video/mp4",
         "webm": "video/webm",
         "mov":  "video/quicktime",
+        "mp3":  "audio/mpeg",
+        "m4a":  "audio/mp4",
+        "wav":  "audio/wav",
+        "ogg":  "audio/ogg",
+        "flac": "audio/flac",
     }.get(ext, "application/octet-stream")

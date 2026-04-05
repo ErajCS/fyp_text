@@ -276,9 +276,9 @@ export default function Profile() {
                     <p className="text-white/60 text-sm">{t("profileDesc")}</p>
                 </div>
 
-                <div className={`grid lg:grid-cols-3 gap-6 ${isRtl ? "lg:flex lg:flex-row-reverse" : ""}`}>
+                <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6`}>
                     {/* ── LEFT: Avatar Card ── */}
-                    <div className="fade-up-d1 bg-white/10 backdrop-blur-xl border border-white/15 rounded-2xl p-8 lg:w-1/3 flex flex-col items-center text-center shadow-xl">
+                    <div className="fade-up-d1 col-span-1 bg-white/10 backdrop-blur-xl border border-white/15 rounded-2xl p-8 flex flex-col items-center text-center shadow-xl self-start">
                         <div className="w-24 h-24 rounded-full bg-gradient-to-br from-amber-400 to-yellow-500 flex items-center justify-center text-3xl font-bold text-emerald-950 shadow-xl mb-4">
                             {getInitials(user?.name)}
                         </div>

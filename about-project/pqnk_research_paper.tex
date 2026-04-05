@@ -86,26 +86,30 @@ Submitted to DURS 2026 — Stream: Artificial Intelligence \& Machine Learning.}
 % ── Abstract ──────────────────────────────────────────────────────────────────
 \begin{abstract}
 In Pakistan, expert agronomic knowledge critical to smallholder farmers remains fragmented
-across informal, heterogeneous media channels—including video lectures, WhatsApp broadcasts,
-social media posts, and printed documents—rendering it undiscoverable and inaccessible at
+across informal, heterogeneous media channels---including video lectures, WhatsApp broadcasts,
+social media posts, and printed documents---rendering it undiscoverable and inaccessible at
 scale. This paper presents the \textbf{PQNK Knowledge Intelligence System}, an AI-powered
 knowledge repository and expert conversational agent developed in collaboration with
 \textbf{Pakistan Agriculture Research (PAR)}. The system is centred on
 \textbf{Paedar Qudratti Nizam-e-Kashtari (PQNK)}, a sustainable natural farming methodology
 pioneered by Dr.~Asif Sharif, whose domain expertise currently reaches farmers exclusively
-through direct, manual consultation. We deliver two core contributions: (1)~a
-\textbf{multimodal automated ingestion pipeline} that extracts, translates, and indexes the
-scattered PQNK corpus—spanning documents (including embedded diagrams and images within PDFs),
-stand-alone images, and video lectures—via Faster-Whisper transcription, GPT-4o-mini vision
-analysis, OCR, bilingual translation, semantic chunking, and dense vector embedding into
-a Qdrant vector store; and (2)~a
-\textbf{domain-restricted Retrieval-Augmented Generation (RAG) chatbot} that grounds every
-response exclusively within the curated corpus, eliminating hallucination risks present in
-open-domain LLMs. Responses are delivered in both Urdu and English with synthesised audio,
-lowering literacy and accessibility barriers for rural users. Evaluation over 50 annotated
-query-answer pairs yields a mean retrieval precision of 0.80 and a hallucination rate of 4\%,
-demonstrating the efficacy of the domain-grounding mechanism. This work presents a replicable
-pipeline for expert knowledge digitalisation in multilingual, low-resource agricultural settings.
+through direct, manual consultation. We deliver four core contributions:
+(1)~a \textbf{fully automated multimodal ingestion pipeline} that extracts, translates, and
+indexes the scattered PQNK corpus---spanning documents (with embedded diagram extraction),
+stand-alone images, video lectures, and \emph{audio recordings}---via Faster-Whisper
+transcription, GPT-4o-mini vision analysis, OCR, bilingual translation, semantic chunking,
+and dense vector embedding into a Qdrant vector store;
+(2)~a \textbf{domain-restricted Retrieval-Augmented Generation (RAG) chatbot} that grounds
+every response exclusively within the curated corpus, eliminating hallucination risks present
+in open-domain LLMs;
+(3)~a \textbf{bilingual audio response interface} delivering synthesised Urdu and English
+voice output to lower literacy and connectivity barriers; and
+(4)~a \textbf{production-grade role-based knowledge platform} with real-time repository
+synchronisation to Google Drive and clickable provenance links in chatbot responses.
+Evaluation over 50 annotated query-answer pairs yields a mean retrieval precision of 0.80
+and a hallucination rate of 4\%, demonstrating the efficacy of the domain-grounding
+mechanism. This work presents a replicable and extensible blueprint for expert knowledge
+digitalisation in multilingual, low-resource agricultural settings.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -151,12 +155,16 @@ scalable workflow to process and index newly produced content.
 
 \subsection*{Key Contributions}
 \begin{enumerate}[noitemsep, leftmargin=*]
-  \item A fully automated 10-stage multimodal ingestion pipeline supporting documents,
-        images, and video lectures.
-  \item A domain-restricted hybrid RAG chatbot with bilingual (Urdu/English) text and
-        synthesised audio output.
-  \item A production-grade role-based platform integrating React, Flask, PostgreSQL,
-        Qdrant, and Google Drive.
+  \item A fully automated 10-stage multimodal ingestion pipeline supporting documents
+        (including embedded PDF image extraction), stand-alone images, video lectures,
+        and \textbf{audio recordings} (new modality).
+  \item A domain-restricted hybrid RAG chatbot with bilingual (Urdu/English) text,
+        synthesised neural audio output, and clickable source provenance links.
+  \item A production-grade role-based knowledge platform integrating React, Flask,
+        PostgreSQL, Qdrant, and Google Drive with two-way deletion synchronisation.
+  \item An invisible audio ingestion pathway that enriches the AI knowledge base without
+        exposing audio files in the public repository interface, enabling private corpus
+        expansion from expert voice recordings.
 \end{enumerate}
 
 % ─────────────────────────────────────────────────────────────────────────────
@@ -220,8 +228,9 @@ repositories. The corpus is inherently multimodal and bilingual (Urdu and Englis
 \textbf{Data Type} & \textbf{Approximate Items} \\
 \midrule
 Textual Documents (PDFs, guides, notes) & $\sim$800 \\
-Images (posters, diagrams, charts) & $\sim$800 \\
+Images (posters, diagrams, charts)      & $\sim$800 \\
 Videos (lectures, field demonstrations) & $\sim$800 \\
+Audio Recordings (expert voice lectures) & $\sim$200 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -272,9 +281,12 @@ success response and spawns an isolated daemon background thread, keeping the UI
 Each thread receives a unique UUID workspace to prevent data collisions during concurrent uploads.
 
 \textit{Stage 1 — Google Drive Sync.}
-The raw file is uploaded to the appropriate category folder on Google Drive (PDFs/,
-Images/, Videos/) using the Drive API v3 with OAuth2, providing off-site backup and
-a browseable file repository.
+The raw file is uploaded synchronously to the appropriate category folder on Google Drive
+(PDFs/, Images/, Videos/, \textbf{Audios/}) using the Drive API v3 with OAuth2.
+The \texttt{drive\_file\_id} and \texttt{drive\_view\_link} are written to the PostgreSQL
+\texttt{resources} table within this same request-response cycle, guaranteeing that
+deletion of a resource from the platform immediately propagates the deletion to Google Drive
+(via \texttt{drive\_service.delete\_file()}) regardless of pipeline processing state.
 
 \textit{Stages 2--3 — Content Extraction.}
 \begin{itemize}[noitemsep, leftmargin=*]
@@ -296,6 +308,17 @@ a browseable file repository.
 
   \item \textbf{Images}: Stand-alone uploaded images follow the same language detection,
         renaming, and GPT-4o-mini bilingual description workflow described above.
+
+  \item \textbf{Audio Recordings --- new modality}: Expert voice lectures uploaded as
+        MP3 or WAV files bypass FFmpeg audio extraction (the file is already audio) and
+        are fed directly to Faster-Whisper (large-v3) for transcription. This removes
+        the FFmpeg step entirely, halving pipeline latency for pure-audio uploads relative
+        to video. Transcripts undergo identical Gemini refinement, bilingual translation,
+        and ingestion as video-derived transcripts. Crucially, audio resources are flagged
+        \texttt{file\_type = `audio'} in PostgreSQL and are \emph{filtered out} of the
+        public \texttt{/api/repository} listing---they enrich the RAG knowledge base
+        invisibly, enabling corpus expansion from private expert voice recordings without
+        cluttering the repository interface for end users.
 
   \item \textbf{Videos}: Audio is first extracted to MP3 via FFmpeg. The audio stream is
         then transcribed using \texttt{faster-whisper} (large-v3 variant)---a
@@ -439,9 +462,10 @@ topics outside Dr.~Sharif's documented material.
 \toprule
 \textbf{Content Type} & \textbf{Time to Indexed} \\
 \midrule
-PDF (10 pages, native text)     & $<$ 4 seconds \\
-Image (high-res poster)         & $<$ 6 seconds \\
-Video (5-minute lecture, CPU)   & $\sim$3--5 minutes \\
+PDF (10 pages, native text)          & $<$ 4 seconds \\
+Image (high-res poster)              & $<$ 6 seconds \\
+Audio (5-minute MP3, CPU)            & $\sim$1--2 minutes \\
+Video (5-minute lecture, CPU)        & $\sim$3--5 minutes \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -475,28 +499,105 @@ Edge TTS synthesis              & 1,100 \\
 
 This paper presented the \textbf{PQNK Knowledge Intelligence System}, a full-stack AI
 platform that addresses the knowledge-access gap facing Pakistani smallholder farmers.
-By combining a 10-stage automated multimodal ingestion pipeline with a domain-restricted
-bilingual RAG chatbot, the system delivers Dr.~Asif Sharif's expert agronomic guidance
-at scale—preserving the specificity and integrity of PQNK principles.
+By combining a fully automated multimodal ingestion pipeline---now covering documents
+(with embedded image extraction), stand-alone images, video lectures, and audio
+recordings---with a domain-restricted bilingual RAG chatbot, the system delivers
+Dr.~Asif Sharif's expert agronomic guidance at scale while preserving the specificity
+and internal consistency of PQNK principles.
 
 Evaluation confirmed high retrieval precision (P@3 = 0.80), a low hallucination rate
-(4\%), and sub-100ms semantic search latency at query time. Asynchronous ingestion enables
-concurrent administrative uploads without disrupting the user-facing service, and the
-bilingual mirror index enables true cross-lingual knowledge retrieval across the full corpus.
+(4\%), and sub-100ms semantic search latency at query time. Asynchronous ingestion
+enables concurrent administrative uploads without disrupting the user-facing service,
+and the bilingual mirror index enables true cross-lingual knowledge retrieval. The
+newly introduced audio modality further expands corpus coverage, enabling private
+expert voice recordings to silently enrich the knowledge base without cluttering the
+public repository interface---a design pattern applicable to any domain where curated
+expert knowledge must remain controlled.
 
-We believe this system constitutes a replicable blueprint for expert knowledge
-digitalisation across any low-resource, multilingual domain—wherever human expertise is
-currently trapped in manual, unindexed formats.
+We believe this system constitutes a replicable and scalable blueprint for expert
+knowledge digitalisation across any low-resource, multilingual domain---wherever human
+expertise is currently trapped in manual, unindexed formats.
 
 \textbf{Future Work}:
 \begin{enumerate}[noitemsep, leftmargin=*]
-  \item Parallel Urdu Qdrant collection to close the retrieval gap for monolingual Urdu
-        queries without translation latency.
-  \item CLIP-based image embeddings for visual semantic search.
-  \item WhatsApp bot deployment via Twilio WhatsApp API, meeting farmers on their primary
-        communication channel.
-  \item Embedding caching with \texttt{lru\_cache} to reduce repeated-query API latency.
-  \item Offline-first Progressive Web App (PWA) for low-connectivity rural deployment.
+
+  \item \textbf{WhatsApp Bot Deployment (Twilio WhatsApp API).}
+        Farmers across Pakistan rely on WhatsApp as their primary communication channel.
+        Integrating the RAG engine with the Twilio WhatsApp API would allow farmers to
+        query the system via voice note or text without requiring any smartphone app
+        installation or internet literacy. This constitutes the single highest-impact
+        deployment extension, directly addressing the rural digital divide.
+
+  \item \textbf{Dedicated Urdu Vector Collection.}
+        Current Urdu queries are translated to English before retrieval, incurring a
+        8-point precision gap (Table~\ref{tab:retrieval}). Maintaining a parallel
+        Qdrant collection of Urdu-script embeddings using a multilingual encoder
+        (e.g., \texttt{paraphrase-multilingual-MiniLM-L12-v2}) and merging
+        dual-collection results would close this gap without translation latency.
+
+  \item \textbf{CLIP-Based Visual Semantic Search.}
+        Replacing the textual image description pipeline with CLIP (Contrastive
+        Language--Image Pre-Training) embeddings would enable image-native vector
+        retrieval: a farmer photographing a diseased leaf could receive agronomic
+        guidance without any OCR or description step. This would make the system
+        genuinely multimodal at the query level, not just the ingestion level.
+
+  \item \textbf{Task Queue Architecture (Celery + Redis).}
+        The current single-threaded Faster-Whisper transcription step creates a
+        resource contention bottleneck under concurrent uploads. Migrating the
+        ingestion pipeline to a Celery distributed task queue backed by Redis would
+        decouple uploads from processing, enabling horizontal scaling and graceful
+        handling of throughput spikes without OOM errors.
+
+  \item \textbf{Offline-First Progressive Web App (PWA).}
+        Rural Pakistani farming communities frequently experience network interruptions.
+        Converting the React frontend to a PWA with a service worker cache would allow
+        farmers to submit queries and browse previously retrieved answers offline,
+        with synchronisation occurring when connectivity is re-established. This is
+        particularly well-aligned with the voice-input chatbot interface.
+
+  \item \textbf{Retrieval-Augmented Fine-Tuning (RAFT).}
+        Gorman et~al. demonstrate that a language model fine-tuned on domain-specific
+        question-answer pairs derived from its own retrieval context achieves
+        substantially lower hallucination than prompt-only RAG. A RAFT pass on the
+        full PQNK corpus---with answers verified by PAR agronomists---could reduce
+        the remaining 4\% hallucination rate to near-zero and reduce dependence on
+        the GPT-4o API entirely, lowering per-query cost.
+
+  \item \textbf{RLHF from Farmer Feedback.}
+        Embedding a thumbs-up / thumbs-down feedback mechanism in the chatbot UI would
+        accumulate a labelled preference dataset over time. This dataset could be used
+        to train a reward model for Reinforcement Learning from Human (farmer) Feedback,
+        progressively aligning response quality with the precise standards and idioms
+        valued by the target user community---a feedback loop entirely absent from
+        static fine-tuning approaches.
+
+  \item \textbf{Multi-Agent Retrieval Architecture.}
+        For complex agronomic queries spanning multiple knowledge pillars
+        (e.g., soil health $\cap$ irrigation $\cap$ pest status), a multi-agent
+        orchestrator could dispatch independent retrieval agents to each pillar in
+        parallel and synthesise results using a Mixture-of-Experts fusion layer.
+        This would substantially improve answer completeness for the multi-hop query
+        category, which currently represents the weakest retrieval path.
+
+  \item \textbf{IoT Sensor Integration.}
+        Coupling the platform with low-cost soil moisture, temperature, and NPK
+        sensors deployed in PQNK demonstration fields would enable real-time,
+        context-aware advisory: the RAG system could be augmented with live sensor
+        readings as soft context, enabling responses such as ``Your field is
+        currently at 34\% volumetric moisture content---our PQNK guidelines
+        recommend irrigation at 28\% for wheat at this stage.'' This constitutes
+        a step from a static knowledge chatbot to a precision-agriculture decision
+        support system.
+
+  \item \textbf{Federated Deployment for Privacy-Preserving Knowledge Sharing.}
+        Multiple regional PAR offices maintain independent knowledge bases.
+        A federated RAG architecture---where regional Qdrant nodes synchronise
+        vector indices without centralising raw documents---would preserve
+        institutional data sovereignty while enabling cross-border knowledge
+        retrieval. This is directly applicable to any multi-stakeholder expert-system
+        deployment context.
+
 \end{enumerate}
 
 % ─────────────────────────────────────────────────────────────────────────────

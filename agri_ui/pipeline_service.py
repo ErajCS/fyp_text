@@ -14,6 +14,10 @@ Scenarios:
                 → ingest_data.py + ingest_to_postgres.py
   - video     → local_whisper.py → local_refining.py → translating_video.py
                 → ingest_data.py + ingest_to_postgres.py
+  - audio     → [NEW] Faster-Whisper transcription (no ffmpeg, already MP3)
+                → local_refining.py → translating_video.py
+                → ingest_data.py + ingest_to_postgres.py
+                NOTE: audio is INVISIBLE in the repository UI (AI-only ingestion)
 """
 
 import os
@@ -44,9 +48,10 @@ PIPELINE_WORK_DIR = os.path.join(REPO_ROOT, "pipeline_workspace")
 PDF_WORK_DIR      = os.path.join(PIPELINE_WORK_DIR, "documents")
 IMAGE_WORK_DIR    = os.path.join(PIPELINE_WORK_DIR, "images")
 VIDEO_WORK_DIR    = os.path.join(PIPELINE_WORK_DIR, "videos")
+AUDIO_WORK_DIR    = os.path.join(PIPELINE_WORK_DIR, "audios")
 FFMPEG_PATH       = os.path.join(REPO_ROOT, "test_video", "ffmpeg.exe")  # same as local_whisper.py
 
-for _d in [PIPELINE_WORK_DIR, PDF_WORK_DIR, IMAGE_WORK_DIR, VIDEO_WORK_DIR]:
+for _d in [PIPELINE_WORK_DIR, PDF_WORK_DIR, IMAGE_WORK_DIR, VIDEO_WORK_DIR, AUDIO_WORK_DIR]:
     os.makedirs(_d, exist_ok=True)
 
 # ── Qdrant / OpenAI config (from .env) ───────────────────────────────────────
@@ -238,7 +243,7 @@ def _sync_to_drive_step(file_path: str, file_type: str, category: str, original_
     print(f"[Pipeline] ☁️  Syncing to Google Drive: {original_name or os.path.basename(file_path)}...")
     
     # Map file_type to Folder Name (same as in app.py)
-    type_folder_map = {"document": "PDFs", "image": "Images", "video": "Videos"}
+    type_folder_map = {"document": "PDFs", "image": "Images", "video": "Videos", "audio": "Audios"}
     drive_path = [type_folder_map.get(file_type, "General"), category]
 
     try:
@@ -623,6 +628,103 @@ def _run_video_pipeline(file_path: str, category: str) -> int:
 
 
 # ==============================================================================
+# SECTION 5b — AUDIO SCENARIO
+# ==============================================================================
+
+def _run_audio_pipeline(file_path: str, category: str) -> int:
+    """
+    Processes an uploaded audio file (MP3/WAV/etc.) through:
+      1. Faster-Whisper transcription  (audio already on disk — no ffmpeg needed)
+      2. Gemini-based Urdu refinement  (skipped for English)
+      3. Bilingual translation via TXTDeepTranslator
+      4. Qdrant + PostgreSQL ingestion
+
+    Audio resources are invisible in the repository UI; this pipeline exists
+    solely to enrich the RAG knowledge base with spoken lecture content.
+    Returns total chunk count indexed.
+    """
+    print(f"\n[Pipeline] 🎧 AUDIO: {os.path.basename(file_path)}")
+
+    from faster_whisper import WhisperModel
+    from local_refining import refine_single_file, is_english
+    from translating_video import TXTDeepTranslator
+
+    work_dir = os.path.join(AUDIO_WORK_DIR, category)
+    os.makedirs(work_dir, exist_ok=True)
+
+    import uuid
+    base     = f"{pathlib.Path(file_path).stem}_{uuid.uuid4().hex[:6]}"
+    txt_path = os.path.join(work_dir, f"{base}.txt")
+
+    # Step 1 — Whisper transcription directly from the audio file
+    # Unlike the video pipeline, we skip ffmpeg because the file is already audio.
+    # device="cpu" + compute_type="int8" avoids the cublas64_12.dll CUDA dependency.
+    if not os.path.exists(txt_path):
+        print(f"[Pipeline] 🎤 Transcribing audio with Whisper...")
+        whisper_model = WhisperModel("large-v3", device="cpu", compute_type="int8")
+
+        _, info = whisper_model.transcribe(
+            file_path, beam_size=5, vad_filter=True,
+            initial_prompt="PQNK, Emmer Wheat, subsoiler, beds, جنتر، کاشت، کلرٹھی"
+        )
+        detected_lang = info.language if info.language in ["en", "ur"] else "ur"
+
+        segments, _ = whisper_model.transcribe(
+            file_path, language=detected_lang, beam_size=10, vad_filter=True,
+            initial_prompt="PQNK, Emmer Wheat, subsoiler, beds, جنتر، کاشت، کلرٹھی"
+        )
+        raw_text = " ".join(s.text.strip() for s in segments)
+
+        with open(txt_path, "w", encoding="utf-8") as f:
+            f.write(raw_text)
+        print(f"[Pipeline] ✅ Audio transcript saved → {os.path.basename(txt_path)}")
+
+    # Step 2 — Gemini refinement (Urdu only)
+    with open(txt_path, "r", encoding="utf-8") as f:
+        raw_content = f.read()
+
+    refined_path = txt_path
+    if not is_english(raw_content):
+        print(f"[Pipeline] ✏️  Refining Urdu audio transcript with Gemini...")
+        try:
+            refined_path = refine_single_file(txt_path)
+        except Exception as exc:
+            print(f"[Pipeline] ⚠️  Refining skipped: {exc}. Using raw transcript.")
+            refined_path = txt_path
+    else:
+        print(f"[Pipeline] ℹ️  English audio detected — skipping Gemini refinement.")
+
+    # Step 3 — Bilingual translation
+    print(f"[Pipeline] 🌐 Translating audio transcript...")
+    try:
+        translator = TXTDeepTranslator(work_dir)
+        translator.process_txt(pathlib.Path(refined_path))
+    except Exception as exc:
+        print(f"[Pipeline] ⚠️  Translation failed: {exc}")
+
+    # Step 4 — Collect txt files
+    txt_files = []
+    for candidate in pathlib.Path(work_dir).glob(f"{base}*.txt"):
+        if "_final" not in candidate.stem:
+            txt_files.append(str(candidate))
+    if refined_path not in txt_files and os.path.exists(refined_path):
+        txt_files.append(refined_path)
+    txt_files = list(set(txt_files))
+
+    if not txt_files:
+        print(f"[Pipeline] ⚠️  No txt files found to index for this audio.")
+        return 0
+
+    print(f"[Pipeline] Generated {len(txt_files)} txt file(s): {[os.path.basename(t) for t in txt_files]}")
+
+    # Step 5 — Ingest to Qdrant + PostgreSQL with source label 'audio'
+    chunks = _ingest_txt_files_to_qdrant(txt_files, category, "audio")
+    _ingest_txt_files_to_postgres(txt_files, category)
+
+    return chunks
+
+
+# ==============================================================================
 # SECTION 6 — MASTER ORCHESTRATOR
 # ==============================================================================
 
@@ -656,6 +758,9 @@ def run_pipeline(file_path: str, file_type: str, category: str, item_id: int = N
 
         elif file_type == "video":
             total = _run_video_pipeline(file_path, category)
+
+        elif file_type == "audio":
+            total = _run_audio_pipeline(file_path, category)
 
         else:
             print(f"[Pipeline] ❌ Unknown file_type: '{file_type}'. Skipping.")

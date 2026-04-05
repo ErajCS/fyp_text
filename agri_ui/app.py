@@ -487,7 +487,7 @@ app = Flask(__name__, static_folder=STATIC_DIR)
 from flask_cors import CORS
 CORS(app, supports_credentials=True, origins=["http://localhost:5173", "http://127.0.0.1:5173"])
 
-app.config["SECRET_KEY"] = "supersecretkey"
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY") or (print("WARNING: SECRET_KEY not set in .env — using insecure default") or "dev-insecure-key-change-me-in-production")
 # PostgreSQL connection URI
 app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://postgres:admin123@localhost:5432/pqnk_db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -569,12 +569,67 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 ALLOWED_DOCS   = {'pdf', 'doc', 'docx', 'txt', 'pptx', 'xlsx'}
 ALLOWED_IMAGES = {'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'}
 ALLOWED_VIDEOS = {'mp4', 'webm', 'mov', 'avi', 'mkv'}
+ALLOWED_AUDIOS = {'mp3', 'm4a', 'wav', 'ogg', 'flac'}  # audio: AI-only, hidden from repo
+
+# ─── Password complexity validator ───────────────────────────────────────────
+import re as _re
+def validate_password(pw: str):
+    """
+    Returns (True, None) if password meets complexity rules, else (False, error_msg).
+    Rules: 8+ chars, at least 1 uppercase, 1 lowercase, 1 digit, 1 special char.
+    """
+    if len(pw) < 8:
+        return False, "Password must be at least 8 characters long."
+    if not _re.search(r"[A-Z]", pw):
+        return False, "Password must contain at least one uppercase letter."
+    if not _re.search(r"[a-z]", pw):
+        return False, "Password must contain at least one lowercase letter."
+    if not _re.search(r"\d", pw):
+        return False, "Password must contain at least one digit."
+    if not _re.search(r"[^A-Za-z0-9]", pw):
+        return False, "Password must contain at least one special character (!@#$% etc.)."
+    return True, None
+
+# ─── Role enforcer decorator ─────────────────────────────────────────────────
+from functools import wraps
+def require_role(*allowed_roles):
+    """
+    Decorator that restricts an API route to users with one of the allowed roles.
+    Must be applied AFTER @login_required.
+    Usage:  @require_role("admin", "superadmin")
+    """
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            if not current_user.is_authenticated:
+                return jsonify({"success": False, "message": "Authentication required"}), 401
+            if current_user.role not in allowed_roles:
+                return jsonify({"success": False, "message": "Forbidden: insufficient permissions"}), 403
+            return fn(*args, **kwargs)
+        return wrapper
+    return decorator
+
+# ─── Simple in-memory rate limiter (per IP) ──────────────────────────────────
+import time as _time
+_RATE_LIMIT_STORE: dict = {}   # { ip: [timestamp, ...] }
+_RATE_WINDOW = 60              # seconds
+_RATE_MAX    = 10              # max attempts per window
+
+def _check_rate_limit(ip: str) -> bool:
+    """Returns False (blocked) if IP exceeds _RATE_MAX attempts in _RATE_WINDOW."""
+    now = _time.time()
+    hits = _RATE_LIMIT_STORE.get(ip, [])
+    hits = [t for t in hits if now - t < _RATE_WINDOW]
+    hits.append(now)
+    _RATE_LIMIT_STORE[ip] = hits
+    return len(hits) <= _RATE_MAX
 
 def allowed_file(filename, file_type):
     ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
     if file_type == 'document': return ext in ALLOWED_DOCS
     if file_type == 'image':    return ext in ALLOWED_IMAGES
     if file_type == 'video':    return ext in ALLOWED_VIDEOS
+    if file_type == 'audio':    return ext in ALLOWED_AUDIOS
     return False
 
 
@@ -802,7 +857,52 @@ def get_response():
                    for m in reversed(recent)]
 
         # ── 5. Run RAG pipeline ────────────────────────────────────────────────
-        ai_response = rag_pipeline(user_message, history=history)
+        rag_result  = rag_pipeline(user_message, history=history)
+        # rag_pipeline now returns {"response": str, "sources": list[dict]}
+        # Guard against older callers that might still return a plain string
+        if isinstance(rag_result, dict):
+            ai_response = rag_result.get("response", "")
+            sources     = rag_result.get("sources", [])
+        else:
+            ai_response = str(rag_result)
+            sources     = []
+
+        # ── 5b. Enrich sources with internal file URLs ─────────────────────────
+        # RAG returns doc_name which is the .txt file (e.g. "paper_english.txt").
+        # Strip language suffix to get the base name, then look up the Resource row.
+        def _enrich_source(src: dict) -> dict:
+            """Add file_url pointing to the actual uploaded file in the repository."""
+            doc_name = src.get("name", "")
+            if not doc_name:
+                return src
+            # Strip common suffixes added by the translation pipeline
+            base = doc_name
+            for suffix in ("_english.txt", "_urdu.txt", "_eng.txt", "_ur.txt", ".txt"):
+                if base.lower().endswith(suffix):
+                    base = base[: -len(suffix)]
+                    break
+            try:
+                # Search Resources table by partial match on original_name or filename
+                resource = Resource.query.filter(
+                    db.or_(
+                        Resource.original_name.ilike(f"%{base}%"),
+                        Resource.filename.ilike(f"%{base}%"),
+                    )
+                ).filter(Resource.file_type != "audio").first()
+                if resource:
+                    enriched = dict(src)
+                    if resource.file_type == "video" and resource.video_link:
+                        enriched["file_url"] = resource.video_link
+                    elif resource.filename:
+                        enriched["file_url"] = f"/api/repository/file/{resource.filename}"
+                    if resource.drive_view_link:
+                        enriched["link"] = resource.drive_view_link
+                    return enriched
+            except Exception as exc:
+                print(f"[Sources] ⚠️  DB lookup failed for '{doc_name}': {exc}")
+            return src
+
+        sources = [_enrich_source(s) for s in sources]
 
         # ── 6. Save AI reply & update conversation timestamp ──────────────────
         ai_msg_obj = ChatMessage(
@@ -813,6 +913,7 @@ def get_response():
 
         return jsonify({
             "response": ai_response,
+            "sources":  sources,
             "conversation_id": conv.id,
             "conversation_title": conv.title,
         })
@@ -1066,8 +1167,10 @@ def api_signup():
     if not name or not email or not password_raw:
         return jsonify({"success": False, "message": "Name, email, and password are required"}), 400
 
-    if len(password_raw) < 8:
-        return jsonify({"success": False, "message": "Password must be at least 8 characters"}), 400
+    # Password complexity check
+    pw_ok, pw_err = validate_password(password_raw)
+    if not pw_ok:
+        return jsonify({"success": False, "message": pw_err}), 400
 
     if password_raw != confirm_password:
         return jsonify({"success": False, "message": "Passwords do not match"}), 400
@@ -1199,6 +1302,78 @@ def api_resend_otp():
     return jsonify({"success": True, "message": "A new OTP has been sent to your email and phone.", "has_phone": bool(user.phone)}), 200
 
 
+@app.route("/api/forgot-password", methods=["POST"])
+def api_forgot_password():
+    """Send a 6-digit password-reset OTP to the registered email."""
+    if not _check_rate_limit(request.remote_addr):
+        return jsonify({"success": False, "message": "Too many attempts. Please wait a minute."}), 429
+
+    data = request.get_json() or {}
+    email = data.get("email", "").strip().lower()
+    if not email:
+        return jsonify({"success": False, "message": "Email is required"}), 400
+
+    user = User.query.filter_by(email=email).first()
+    # Always return success to prevent email enumeration
+    if not user or not user.is_verified:
+        return jsonify({"success": True, "message": "If that email is registered, a reset code has been sent."}), 200
+
+    from datetime import timedelta
+    otp = f"{secrets.randbelow(1000000):06d}"
+    user.otp_code   = otp
+    user.otp_expiry = datetime.utcnow() + timedelta(minutes=10)
+    try:
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        return jsonify({"success": False, "message": f"Database error: {str(exc)}"}), 500
+
+    send_otp_email(email, otp, user.name)
+    return jsonify({"success": True, "message": "If that email is registered, a reset code has been sent."}), 200
+
+
+@app.route("/api/reset-password", methods=["POST"])
+def api_reset_password():
+    """Verify the OTP and set the new password."""
+    if not _check_rate_limit(request.remote_addr):
+        return jsonify({"success": False, "message": "Too many attempts. Please wait a minute."}), 429
+
+    data = request.get_json() or {}
+    email       = data.get("email", "").strip().lower()
+    otp         = data.get("otp", "").strip()
+    new_password = data.get("new_password", "")
+
+    if not email or not otp or not new_password:
+        return jsonify({"success": False, "message": "Email, OTP, and new password are required"}), 400
+
+    pw_ok, pw_err = validate_password(new_password)
+    if not pw_ok:
+        return jsonify({"success": False, "message": pw_err}), 400
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return jsonify({"success": False, "message": "Account not found"}), 404
+
+    if not user.otp_code or not user.otp_expiry:
+        return jsonify({"success": False, "message": "No reset code found. Please request a new one."}), 400
+
+    if datetime.utcnow() > user.otp_expiry:
+        return jsonify({"success": False, "message": "Reset code has expired. Please request a new one."}), 400
+
+    if user.otp_code != otp:
+        return jsonify({"success": False, "message": "Incorrect reset code."}), 400
+
+    user.password   = bcrypt.generate_password_hash(new_password).decode("utf-8")
+    user.otp_code   = None
+    user.otp_expiry = None
+    try:
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        return jsonify({"success": False, "message": f"Database error: {str(exc)}"}), 500
+
+    return jsonify({"success": True, "message": "Password reset successfully. You can now log in."}), 200
+
 
 @app.route("/api/user", methods=["GET"])
 @login_required
@@ -1236,6 +1411,10 @@ def api_user_update():
             return jsonify({"success": False, "message": "Current password is required to set a new password"}), 400
         if not bcrypt.check_password_hash(current_user.password, current_password):
             return jsonify({"success": False, "message": "Current password is incorrect"}), 401
+        # Enforce complexity on new password
+        pw_ok, pw_err = validate_password(new_password)
+        if not pw_ok:
+            return jsonify({"success": False, "message": pw_err}), 400
         current_user.password = bcrypt.generate_password_hash(new_password).decode("utf-8")
 
     try:
@@ -1424,14 +1603,18 @@ def resource_to_dict(r):
 @app.route("/api/repository", methods=["GET"])
 @login_required
 def api_repo_list():
-    """List repository resources with optional filters."""
+    """List repository resources with optional filters.
+    Audio resources are always excluded — they are AI-ingestion-only and
+    must not appear in the browse/admin repository interface.
+    """
     q         = request.args.get("q", "").strip()
     category  = request.args.get("category", "")
     file_type = request.args.get("file_type", "")
     page      = int(request.args.get("page", 1))
     per_page  = min(int(request.args.get("per_page", 20)), 100)
 
-    query = Resource.query
+    # Audio is hidden from all repository views; it exists only for Qdrant/PG ingestion
+    query = Resource.query.filter(Resource.file_type != 'audio')
     if q:
         query = query.filter(
             (Resource.title.ilike(f"%{q}%")) |
@@ -1440,15 +1623,17 @@ def api_repo_list():
         )
     if category:
         query = query.filter_by(category=category)
-    if file_type:
+    if file_type and file_type != 'audio':
         query = query.filter_by(file_type=file_type)
 
     total     = query.count()
     resources = query.order_by(Resource.created_at.desc()) \
                      .offset((page - 1) * per_page).limit(per_page).all()
 
-    # Get unique categories for filter dropdown
-    cats = db.session.query(Resource.category).distinct().all()
+    # Categories from non-audio resources only
+    cats = (db.session.query(Resource.category)
+            .filter(Resource.file_type != 'audio')
+            .distinct().all())
     categories = sorted([c[0] for c in cats if c[0]])
 
     return jsonify({
@@ -1465,20 +1650,24 @@ def api_repo_list():
 @login_required
 @require_role("admin", "superadmin")
 def api_repo_upload():
-    """Upload a new resource (multipart form)."""
+    """Upload a new resource (multipart form).
+    Supported file_type values: document, image, video, audio.
+    Audio resources are ingested into the AI knowledge base (Qdrant + PostgreSQL)
+    and synced to Google Drive but are NEVER returned by the repository listing API.
+    """
     import werkzeug.utils as wu
 
     title       = request.form.get("title", "").strip()
     description = request.form.get("description", "").strip()
     category    = request.form.get("category", "General").strip()
     keywords    = request.form.get("keywords", "").strip()
-    file_type   = request.form.get("file_type", "").strip().lower()  # document / image / video
+    file_type   = request.form.get("file_type", "").strip().lower()
     video_link  = request.form.get("video_link", "").strip()
 
     if not title:
         return jsonify({"success": False, "message": "Title is required"}), 400
-    if file_type not in ("document", "image", "video"):
-        return jsonify({"success": False, "message": "file_type must be document, image, or video"}), 400
+    if file_type not in ("document", "image", "video", "audio"):
+        return jsonify({"success": False, "message": "file_type must be document, image, video, or audio"}), 400
 
     saved_filename = None
     original_name  = None
@@ -1494,9 +1683,35 @@ def api_repo_upload():
         file.save(dest)
         saved_filename = unique_name
 
-    # Videos are now uploaded as local files; a video_link is optional metadata only.
+    # Videos: file or link required
     if file_type == "video" and not saved_filename and not video_link:
         return jsonify({"success": False, "message": "A video file or link is required"}), 400
+    # Audio: file always required
+    if file_type == "audio" and not saved_filename:
+        return jsonify({"success": False, "message": "An audio file is required"}), 400
+
+    # ── Synchronous Google Drive upload ──────────────────────────────────────
+    # We upload to Drive synchronously here so that drive_file_id is guaranteed
+    # to be set in the DB row before any subsequent delete can happen.
+    # The AI ingestion pipeline is still launched asynchronously below.
+    drive_file_id   = None
+    drive_view_link = None
+    if saved_filename:
+        try:
+            type_folder_map = {"document": "PDFs", "image": "Images",
+                               "video": "Videos", "audio": "Audios"}
+            drive_path   = [type_folder_map.get(file_type, "General"), category]
+            drive_result = _drive_svc.upload_file(
+                local_path     = os.path.join(UPLOAD_DIR, saved_filename),
+                filename       = original_name or saved_filename,
+                mime_type      = _drive_svc.get_mime_type(original_name or saved_filename),
+                subfolder_path = drive_path
+            )
+            drive_file_id   = drive_result.get("file_id")
+            drive_view_link = drive_result.get("view_link")
+            print(f"[Upload] ✅ Drive sync complete: {original_name} → {drive_view_link}")
+        except Exception as _de:
+            print(f"[Upload] ⚠️ Drive sync failed (non-fatal): {_de}")
 
     resource = Resource(
         title           = title,
@@ -1507,16 +1722,15 @@ def api_repo_upload():
         filename        = saved_filename,
         original_name   = original_name,
         video_link      = video_link if file_type == "video" else None,
-        drive_file_id   = None, # Will be updated by background pipeline
-        drive_view_link = None, # Will be updated by background pipeline
+        drive_file_id   = drive_file_id,
+        drive_view_link = drive_view_link,
         uploaded_by     = current_user.id,
     )
     db.session.add(resource)
     db.session.commit()
 
-    # ── Automation Pipeline (background thread) ──────────────────────────────
-    # Fires AFTER the DB record is committed and AFTER the Drive upload above.
-    # It does NOT touch the Drive upload process.
+    # ── AI ingestion pipeline (background thread) ────────────────────────────
+    # Drive sync is already done above; pipeline handles Qdrant/PG ingestion only.
     if saved_filename:
         try:
             from pipeline_service import launch_pipeline_background
@@ -1529,7 +1743,6 @@ def api_repo_upload():
                 original_name=original_name
             )
         except Exception as _pe:
-            # Pipeline failures must never break the upload response
             print(f"[Pipeline] ⚠️ Could not start pipeline: {_pe}")
     # ─────────────────────────────────────────────────────────────────────────
 
