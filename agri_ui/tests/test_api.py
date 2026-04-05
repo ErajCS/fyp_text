@@ -21,7 +21,7 @@ def test_signup_validation(client):
     # The API returns 400 when validation fails
     assert response.status_code == 400
     data = json.loads(response.data)
-    assert 'Password must be at least' in data['error']
+    assert 'Password must be at least' in data['message']
 
 
 def test_missing_fields_signup(client):
@@ -31,7 +31,7 @@ def test_missing_fields_signup(client):
         json={'email': 'missing@test.com'}
     )
     assert response.status_code == 400
-    assert 'Missing required fields' in json.loads(response.data)['error']
+    assert 'Name, email, and password are required' in json.loads(response.data)['message']
 
 
 def test_login_missing_user(client):
@@ -44,7 +44,7 @@ def test_login_missing_user(client):
         }
     )
     assert response.status_code == 401
-    assert 'Invalid email or password' in json.loads(response.data)['error']
+    assert 'Invalid email or password' in json.loads(response.data)['message']
 
 
 def test_protected_route_unauthorized(client):
