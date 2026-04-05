@@ -196,6 +196,53 @@ def list_folder_contents(folder_id: str):
         return []
 
 
+def list_all_files_recursive(folder_id: str = None) -> list:
+    """
+    Recursively list ALL non-folder files in the root Drive folder (and subfolders).
+    Returns a flat list of dicts: [{id, name, mimeType, webViewLink}, ...]
+    This is used for the bidirectional sync to detect files added directly to Drive.
+    """
+    drive = _get_drive()
+    if not drive:
+        return []
+
+    root_id = folder_id or os.getenv("GOOGLE_DRIVE_FOLDER_ID", "").strip()
+    if not root_id:
+        logger.error("list_all_files_recursive: GOOGLE_DRIVE_FOLDER_ID not set")
+        return []
+
+    all_files = []
+
+    def _recurse(parent_id: str):
+        query = f"'{parent_id}' in parents and trashed = false"
+        try:
+            page_token = None
+            while True:
+                kwargs = dict(
+                    q=query,
+                    fields="nextPageToken, files(id, name, mimeType, webViewLink)",
+                    supportsAllDrives=True,
+                    includeItemsFromAllDrives=True,
+                    pageSize=500,
+                )
+                if page_token:
+                    kwargs["pageToken"] = page_token
+                resp = drive.files().list(**kwargs).execute()
+                for item in resp.get("files", []):
+                    if item["mimeType"] == "application/vnd.google-apps.folder":
+                        _recurse(item["id"])   # descend into subfolder
+                    else:
+                        all_files.append(item)
+                page_token = resp.get("nextPageToken")
+                if not page_token:
+                    break
+        except Exception as exc:
+            logger.error(f"Drive recursive list failed for {parent_id}: {exc}")
+
+    _recurse(root_id)
+    return all_files
+
+
 def delete_file(file_id: str) -> bool:
     """Delete a file from Drive by its file_id. Returns True on success."""
     if not file_id:

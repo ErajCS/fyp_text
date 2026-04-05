@@ -1609,7 +1609,74 @@ def api_repo_list():
     """List repository resources with optional filters.
     Audio resources are always excluded — they are AI-ingestion-only and
     must not appear in the browse/admin repository interface.
+    On every call, a background thread silently syncs Google Drive → DB
+    so files added directly to Drive appear immediately on the next refresh.
     """
+    # ── Background Drive ↔ DB sync ─────────────────────────────────────────
+    def _sync_drive_to_db():
+        """
+        Fetch all files in the configured Drive folder (recursively),
+        compare against known drive_file_ids in PostgreSQL, and insert
+        any missing records so direct Drive uploads are reflected in the UI.
+        """
+        try:
+            with app.app_context():
+                drive_files = _drive_svc.list_all_files_recursive()
+                if not drive_files:
+                    return
+
+                # Build a set of all drive_file_ids already in DB
+                existing_ids = {
+                    row[0] for row in
+                    db.session.query(Resource.drive_file_id)
+                    .filter(Resource.drive_file_id.isnot(None)).all()
+                }
+
+                added = 0
+                for f in drive_files:
+                    file_id = f.get("id")
+                    if not file_id or file_id in existing_ids:
+                        continue  # already tracked
+
+                    name      = f.get("name", "Untitled")
+                    mime      = f.get("mimeType", "")
+                    view_link = f.get("webViewLink", "")
+
+                    # Determine file_type from MIME
+                    if mime.startswith("image/"):
+                        ftype = "image"
+                    elif mime.startswith("video/") or mime in ("video/mp4", "video/webm"):
+                        ftype = "video"
+                    elif mime.startswith("audio/"):
+                        continue  # skip audio — AI-internal only
+                    else:
+                        ftype = "document"
+
+                    # Strip extension for title
+                    title = name.rsplit(".", 1)[0] if "." in name else name
+
+                    new_resource = Resource(
+                        title           = title,
+                        description     = f"Imported from Google Drive",
+                        category        = "General",
+                        file_type       = ftype,
+                        original_name   = name,
+                        drive_file_id   = file_id,
+                        drive_view_link = view_link,
+                    )
+                    db.session.add(new_resource)
+                    existing_ids.add(file_id)
+                    added += 1
+
+                if added:
+                    db.session.commit()
+                    print(f"[DriveSync] ✅ Imported {added} new file(s) from Google Drive")
+        except Exception as exc:
+            print(f"[DriveSync] ⚠️ Sync error (non-fatal): {exc}")
+
+    # Fire sync in background so it doesn't slow down the API response
+    threading.Thread(target=_sync_drive_to_db, daemon=True).start()
+
     q         = request.args.get("q", "").strip()
     category  = request.args.get("category", "")
     file_type = request.args.get("file_type", "")
@@ -1647,6 +1714,69 @@ def api_repo_list():
         "categories": categories,
         "resources":  [resource_to_dict(r) for r in resources],
     })
+
+
+@app.route("/api/drive/sync", methods=["POST"])
+@login_required
+@require_role("admin", "superadmin")
+def api_drive_sync():
+    """
+    Manually trigger a full Google Drive → PostgreSQL sync.
+    Useful when an admin uploads files directly to Drive and wants
+    them to appear in the frontend immediately without waiting for
+    the background auto-sync on the next GET /api/repository call.
+    """
+    try:
+        drive_files = _drive_svc.list_all_files_recursive()
+        if not drive_files:
+            return jsonify({"success": True, "added": 0, "message": "No files found in Drive folder or Drive not configured."})
+
+        existing_ids = {
+            row[0] for row in
+            db.session.query(Resource.drive_file_id)
+            .filter(Resource.drive_file_id.isnot(None)).all()
+        }
+
+        added = 0
+        for f in drive_files:
+            file_id = f.get("id")
+            if not file_id or file_id in existing_ids:
+                continue
+
+            name      = f.get("name", "Untitled")
+            mime      = f.get("mimeType", "")
+            view_link = f.get("webViewLink", "")
+
+            if mime.startswith("image/"):
+                ftype = "image"
+            elif mime.startswith("video/"):
+                ftype = "video"
+            elif mime.startswith("audio/"):
+                continue
+            else:
+                ftype = "document"
+
+            title = name.rsplit(".", 1)[0] if "." in name else name
+
+            new_resource = Resource(
+                title           = title,
+                description     = "Imported from Google Drive",
+                category        = "General",
+                file_type       = ftype,
+                original_name   = name,
+                drive_file_id   = file_id,
+                drive_view_link = view_link,
+            )
+            db.session.add(new_resource)
+            existing_ids.add(file_id)
+            added += 1
+
+        db.session.commit()
+        return jsonify({"success": True, "added": added, "message": f"Sync complete. {added} new file(s) imported from Drive."})
+
+    except Exception as exc:
+        db.session.rollback()
+        return jsonify({"success": False, "message": str(exc)}), 500
 
 
 @app.route("/api/repository/upload", methods=["POST"])

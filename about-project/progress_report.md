@@ -6,36 +6,51 @@ The PQNK Platform has evolved from a local prototype into a highly robust, multi
 ---
 
 ## 2. Infrastructure & Repository Management
-The application follows a modern decoupled architecture:
-*   **Frontend:** React.js powered by Vite, utilizing Tailwind CSS for styling and Framer Motion for animations.
+The application features a decoupled architecture designed for high availability and synchronized storage:
+*   **Frontend:** React.js powered by Vite.
 *   **Backend:** Flask (Python) exposing RESTful APIs.
-*   **Databases:** PostgreSQL handles structured relational data (Users, Roles, File Metadata), while **Qdrant** acts as the high-dimensional Vector Database for semantic search.
+*   **Databases:** PostgreSQL (relational) and Qdrant (vector).
 
-### Google Drive Integration (`drive_service.py`)
-To ensure high availability and cloud redundancy, the repository is directly synced with Google Drive.
-*   **API Usage:** Utilizes the Google Drive API via OAuth2 Service Accounts (`google-api-python-client`, `google-auth`).
-*   **Automated Sync:** When a user uploads a document through the PQNK dashboard, it is stored locally, but a background thread immediately triggers `MediaIoBaseUpload` to push a copy to a dedicated Google Drive folder.
-*   **Deletion & Addition Logic:** The system maintains parity between the local repository and the cloud. If an administrator deletes a file from the PQNK UI, a request is made to the Drive API to trash the corresponding file ID, and the metadata is purged from PostgreSQL. Adding files automatically updates both databases (relational + vector) and the Drive cloud storage seamlessly.
+### Repository Setup & Frontend Viewing Logic
+The repository serves as the central hub where all agricultural documents, audio, and videos are accessible.
+*   **Setup:** We utilize a PostgreSQL database managed via SQLAlchemy. When a user navigates to the repository on the frontend (`BrowseRepository.jsx`), a `GET /api/resources` API call is made. 
+*   **The Backend Controller (`app.py`):** The backend queries the `Resource` table, supporting pagination, category filtering, and text search. It returns metadata (title, category, upload date) to the frontend.
+*   **Frontend Rendering:** The React frontend maps this data into interactive cards. When a user clicks a file, the frontend calls the `/api/repository/file/<filename>` endpoint. 
+*   **File Serving Logic:** To view the content directly without leaving the platform, the Flask backend securely uses `send_from_directory` to serve the physical file (PDF, MP4, etc.) from the server's local storage folder.
+
+### Google Drive Synchronization (`drive_service.py`)
+To ensure enterprise-grade disaster recovery and cloud resilience, every file in the system is securely duplicated to Google Drive.
+*   **Authentication & Initialization:** We established an OAuth2 Google Service Account (`google_service_account.json`). The `drive_service.py` script authenticates headlessly without any manual browser prompts.
+*   **Seamless Uploads (`MediaIoBaseUpload`):** When a file is uploaded to the PQNK platform, it is saved locally first. Instantly, `drive_service.py` spawns a background process that reads the file stream and uses `MediaIoBaseUpload` to quietly push it to a specified shared Google Drive folder.
+*   **Symmetric Deletion:** If an admin deletes a resource from the React dashboard, the backend triggers `.files().delete(fileId=drive_file_id).execute()` via the Drive API to trash it in the cloud, while simultaneously purging the local file and PostgreSQL record, ensuring precise 1:1 parity between local storage and cloud storage.
 
 ---
 
-## 3. The Automated Multimodal Pipeline (`pipeline_service.py`)
-The standout feature of the backend architecture is the completely automated data ingestion pipeline. When a file is uploaded, the backend immediately returns a success status to the user while spawning background threads (`threading.Thread`) to process the raw file into AI-searchable embeddings.
+## 3. The Automated Multimodal Pipeline
+A cornerstone of the PQNK platform is the completely automated data ingestion pipeline (`pipeline_service.py`). When an administrator uploads a new image, video, or PDF, the UI immediately displays a success message. Concurrently, the backend spawns a `threading.Thread` calling `pipeline_service.py` so the user is never stuck waiting on a loading screen while AI processing occurs in the background.
 
-The pipeline natively supports four distinct file types:
-1.  **Documents (PDF/DOCX/TXT/CSV):**
-    *   Text is extracted natively. If the document is an image-heavy PDF, PyTesseract OCR is applied.
-    *   **Embedded Image Extraction:** A custom module (`extracting_images_from_pdfs.py`) scans PDFs and pulls out embedded charts, graphs, and photos.
-2.  **Images:**
-    *   Passed through `translating_images.py`, which leverages GPT-4o-mini Vision to comprehensively analyze the image and generate a highly detailed bilingual (English and Urdu) textual description of the visual data.
-3.  **Video:**
-    *   Audio tracks are stripped from the video file locally using `FFmpeg`.
-    *   The extracted audio is transcribed using Whisper.
-4.  **Audio (MP3/WAV):**
-    *   Processed directly using `faster-whisper`. To ensure broad compatibility across production environments (which may lack NVIDIA CUDA GPUs), the model is forced to execute via `device="cpu"` and `compute_type="int8"`.
-    *   Audio files are marked as "AI-internal" and are intentionally hidden from the visual UI repository view, while their detailed transcripts heavily power the RAG chatbot.
+The pipeline comprises a series of highly specialized Python scripts, running in sequence depending on the file type:
 
-After the file is converted into text, `ingest_data.py` chunks the text, creates vectors using OpenAI (`text-embedding-3-small`), and pushes them to Qdrant. Finally, `ingest_to_postgres.py` logs the file's metadata into the relational database.
+1.  **Image Translation & Processing (`translating_images.py`)**
+    *   **Logic:** When an image (e.g., an infographic showing crop disease) is uploaded, this script reads the file bytes, encodes it to Base64, and sends it to the **GPT-4o-mini Vision API**.
+    *   **Result:** It returns a detailed, bilingual (Urdu and English) textual description of everything visible in the image, saving it to `/pipeline_workspace` as a `.txt` file ready for vectorization.
+
+2.  **PDF/Document Analysis & Extraction (`extracting_images_from_pdfs.py` & `extraction.py`)**
+    *   **Logic:** Raw PDFs often trap valuable visual data. `extracting_images_from_pdfs.py` scans every page of a document using PyMuPDF. If it detects embedded charts or photographs, it extracts them, saves them locally, and automatically feeds them into `translating_images.py`.
+    *   **Result:** The final `.txt` output contains both the raw text of the document AND full descriptions of its embedded images.
+
+3.  **Video Translation & Stripping (`translating_video.py`)**
+    *   **Logic:** Processing massive video files with AI directly is expensive and slow. This script uses the powerful `ffmpeg` utility locally to strip out just the audio track from the uploaded `.mp4`.
+    *   **Result:** It extracts a lightweight MP3/WAV file, drastically speeding up the pipeline.
+
+4.  **Audio Transcription (`local_whisper.py`)**
+    *   **Logic:** Audio tracks (from native uploads or stripped videos) are fed into `faster-whisper`. Since cloud hosting environments often lack expensive NVIDIA GPUs, we hardcoded the model to run optimally on standard CPU hardware using `device="cpu"` and `compute_type="int8"`.
+    *   **Result:** A pristine, timestamped transcript is generated. The audio file is then natively integrated to power the Chatbot.
+
+5.  **Vectorization & Knowledge Injection (`ingest_data.py` & `ingest_to_postgres.py`)**
+    *   Once the above scripts reduce any media file into a final `.txt` document, `ingest_data.py` takes over. 
+    *   It recursively reads the text, splits it into semantic chunks using LangChain's `RecursiveCharacterTextSplitter`, generates dense numerical vectors via OpenAI's `text-embedding-3-small` endpoint, and pushes them into the **Qdrant Vector Database**. 
+    *   Finally, the pipeline terminates successfully by calling `ingest_to_postgres.py`, which writes all final tracking metadata (upload dates, final paths, drive IDs) to the PostgreSQL database.
 
 ---
 
