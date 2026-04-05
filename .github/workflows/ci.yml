@@ -44,6 +44,11 @@ jobs:
         env:
           SECRET_KEY: test-ci-key
           FLASK_ENV: testing
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          QDRANT_URL: ${{ secrets.QDRANT_URL }}
+          QDRANT_API_KEY: ${{ secrets.QDRANT_API_KEY }}
+          MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
+          MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
 
   # ── Frontend continuous integration (Testing & Build) ───────────────
   frontend:
