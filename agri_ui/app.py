@@ -489,7 +489,10 @@ CORS(app, supports_credentials=True, origins=["http://localhost:5173", "http://1
 
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY") or (print("WARNING: SECRET_KEY not set in .env — using insecure default") or "dev-insecure-key-change-me-in-production")
 # PostgreSQL connection URI
-app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://postgres:admin123@localhost:5432/pqnk_db"
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get(
+    "SQLALCHEMY_DATABASE_URI", 
+    "postgresql://postgres:admin123@localhost:5432/pqnk_db"
+)
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 # Create folder for audio files
