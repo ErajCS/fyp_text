@@ -1,0 +1,79 @@
+name: PQNK CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+
+  # ── Backend continuous integration (Testing & Linting) ──────────────
+  backend:
+    name: Backend — Lint & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 pytest pytest-flask flask flask-login flask-bcrypt flask-sqlalchemy flask-cors python-dotenv
+          # Install any other core requirements here using your requirements.txt in the future
+          # pip install -r agri_ui/requirements.txt
+
+      - name: Lint with flake8
+        run: |
+          cd agri_ui
+          flake8 app.py pipeline_service.py drive_service.py \
+            --max-line-length=120 \
+            --ignore=E501,W503,E402
+
+      - name: Run backend tests
+        run: |
+          cd agri_ui
+          pytest tests/ -v
+        env:
+          SECRET_KEY: test-ci-key
+          FLASK_ENV: testing
+
+  # ── Frontend continuous integration (Testing & Build) ───────────────
+  frontend:
+    name: Frontend — Lint & Build Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend-react/PQNK_Frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend-react/PQNK_Frontend
+          npm ci
+
+      - name: Lint frontend (ESLint)
+        run: |
+          cd frontend-react/PQNK_Frontend
+          npm run lint
+
+      - name: Build production bundle
+        run: |
+          cd frontend-react/PQNK_Frontend
+          npm run build
+        env:
+          VITE_API_BASE_URL: http://localhost:5000

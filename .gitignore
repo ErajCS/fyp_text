@@ -68,3 +68,5 @@ package-lock.json
 # ── Pipeline & Video Dependencies ─────────────────────────────────────────────
 test_video/ffmpeg*
 pipeline_workspace/
+
+about-project/RAG_IMPROVEMENTS.md
