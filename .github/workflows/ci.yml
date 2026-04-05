@@ -8,6 +8,7 @@ on:
 
 jobs:
 
+  #testing
   # ── Backend continuous integration (Testing & Linting) ──────────────
   backend:
     name: Backend — Lint & Test
