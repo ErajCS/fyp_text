@@ -52,7 +52,12 @@ The PQNK Chatbot is an intelligent Retrieval-Augmented Generation (RAG) agent ca
 Significant work was put into securing the platform against unauthorized access and malicious inputs:
 *   **Strict Access Control:** The frontend utilizes a `ProtectedRoute` React wrapper that verifies JWT/Sessions against an allowed array of roles (e.g., `["superadmin", "admin"]`). Bypassing the URL bar is impossible. On the backend, custom Flask decorators (`@require_role`) reject unauthorized REST requests.
 *   **Password Policies:** A stringent `validate_password()` function enforces an 8+ character minimum containing an uppercase letter, lowercase letter, digit, and special symbol.
-*   **Multi-Channel OTP Verification:** Registration and password resets trigger a 6-digit OTP code (expiring in 10 minutes) sent asynchronously via Gmail SMTP (and optionally SMS via Twilio). 
+*   **Multi-Channel OTP Verification Management:** A fully custom One-Time Password (OTP) system was built from scratch to verify user identity during Registration and Forgot Password workflows.
+    *   **Generation & Database Storage:** When a user signs up or requests a password reset, `secrets.randbelow(1000000)` generates a cryptographically secure 6-digit code. This code is stored in the PostgreSQL database under the user's `otp_code` column, alongside an `otp_expiry` timestamp set to exactly 10 minutes in the future (`datetime.utcnow() + timedelta(minutes=10)`).
+    *   **Concurrent Dual-Channel Delivery:** To ensure the user gets the code as fast as possible without freezing the frontend, the backend initiates two parallel background threads (`threading.Thread`). 
+        1.   **Thread 1 (Email):** Connects to the Gmail SMTP server using `smtplib` and `email.mime` to dispatch a beautifully formatted HTML email containing the OTP.
+        2.   **Thread 2 (SMS):** Simultaneously connects to the Twilio REST API (`twilio.rest`) to dispatch the same OTP to the user's registered smartphone via SMS. 
+    *   **Verification & Expiration Logic (`/api/verify-otp`):** When the user submits the code, the backend first checks if `datetime.utcnow() > user.otp_expiry`. If it has expired, the request is rejected with a 400 Bad Request. If it matches, `is_verified` is flipped to `True`, and the OTP columns are immediately set to `None` in the database to prevent replay attacks. We also implemented a `/api/resend-otp` endpoint using the exact same threaded delivery logic if the user misses the first prompt.
 *   **Rate-Limiting:** To prevent attackers from spamming emails, an IP-based rate limiter restricts calls to endpoints like `/api/forgot-password`.
 
 ---
