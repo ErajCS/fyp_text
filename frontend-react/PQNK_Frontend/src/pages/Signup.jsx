@@ -15,6 +15,17 @@ export default function Signup() {
     const [loading, setLoading] = useState(false);
     const [agreed, setAgreed] = useState(false);
     const [error, setError] = useState("");
+    const [showPwHint, setShowPwHint] = useState(false);
+
+    const pwRules = [
+        { test: (pw) => pw.length >= 8, label: "At least 8 characters" },
+        { test: (pw) => /[A-Z]/.test(pw), label: "At least one uppercase letter" },
+        { test: (pw) => /[a-z]/.test(pw), label: "At least one lowercase letter" },
+        { test: (pw) => /\d/.test(pw), label: "At least one digit (0–9)" },
+        { test: (pw) => /[^A-Za-z0-9]/.test(pw), label: "At least one special character (!@#$%…)" },
+    ];
+    const pwScore = pwRules.filter((r) => r.test(formData.password)).length;
+    const pwColor = pwScore <= 1 ? "#ef4444" : pwScore <= 3 ? "#f59e0b" : "#22c55e";
 
     const handleChange = (e) => {
         setError("");
@@ -29,8 +40,8 @@ export default function Signup() {
             setError("Passwords do not match");
             return;
         }
-        if (formData.password.length < 8) {
-            setError("Password must be at least 8 characters");
+        if (pwScore < 5) {
+            setError("Password does not meet all requirements.");
             return;
         }
         if (!agreed) {
@@ -218,6 +229,7 @@ export default function Signup() {
                                         <input
                                             type={showPassword ? "text" : "password"} name="password"
                                             value={formData.password} onChange={handleChange} required
+                                            onFocus={() => setShowPwHint(true)}
                                             placeholder="Min. 8 characters"
                                             className="w-full px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-400 text-sm transition pr-12"
                                         />
@@ -226,6 +238,25 @@ export default function Signup() {
                                             {showPassword ? "🙈" : "👁️"}
                                         </button>
                                     </div>
+                                    {showPwHint && formData.password && (
+                                        <div className="mt-3 space-y-2 animate-float-in">
+                                            {/* Strength bar */}
+                                            <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                                                <div className="h-full rounded-full transition-all duration-300"
+                                                    style={{ width: `${(pwScore / 5) * 100}%`, backgroundColor: pwColor }} />
+                                            </div>
+                                            <div className="grid grid-cols-1 gap-1">
+                                                {pwRules.map((r, i) => (
+                                                    <p key={i} className={`text-[10px] flex items-center gap-1.5 transition-colors ${r.test(formData.password) ? "text-green-600 font-medium" : "text-gray-400"}`}>
+                                                        <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center border ${r.test(formData.password) ? "bg-green-100 border-green-200 text-green-600" : "border-gray-200 text-transparent"}`}>
+                                                            {r.test(formData.password) ? "✓" : ""}
+                                                        </span>
+                                                        {r.label}
+                                                    </p>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Confirm Password */}

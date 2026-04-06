@@ -3003,11 +3003,15 @@ def generate_answer(original_query, chunks, target_lang="en"):
 
 # ============ PIPELINE ============
 
-def rag_pipeline(query, history=None):
+def rag_pipeline(query, history=None, force_lang=None):
     """
     Main RAG pipeline.
-    history: list of {role: 'user'/'assistant', content: str} dicts
-             representing recent conversation turns (from the frontend).
+    history:    list of {role: 'user'/'assistant', content: str} dicts
+                representing recent conversation turns (from the frontend).
+    force_lang: optional ISO-639-1 code ('ur' or 'en').  When supplied by the
+                caller it takes priority over detect_lang() so voice queries
+                (which may be Romanized or mixed) still produce the correct
+                response language.
 
     Returns a dict:
         {
@@ -3031,7 +3035,14 @@ def rag_pipeline(query, history=None):
     query = resolve_entity(query)
     query = expand_acronym_query(query)
 
-    user_lang = detect_lang(query)
+    # Determine response language:
+    # - If the caller explicitly passes force_lang (e.g. from the UI toggle), use it.
+    # - Otherwise fall back to character-set detection on the query text.
+    if force_lang and force_lang in ("ur", "en"):
+        user_lang = force_lang
+        print(f"🌐 Language forced to '{user_lang}' by caller (UI toggle / voice hint)")
+    else:
+        user_lang = detect_lang(query)
 
     def _extract_sources(chunks):
         """Deduplicate sources from retrieved chunks and build source list."""
@@ -3060,6 +3071,7 @@ def rag_pipeline(query, history=None):
     chunks = retrieve_chunks_hybrid(query, top_k=TOP_K)
     answer = generate_answer(query, chunks, target_lang=("ur" if user_lang == "ur" else "en"))
     return {"response": answer, "sources": _extract_sources(chunks)}
+
 
 
 # ============ TEST ============

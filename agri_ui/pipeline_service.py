@@ -559,8 +559,8 @@ def _run_video_pipeline(file_path: str, category: str) -> int:
     # Step 2 — Whisper transcription
     if not os.path.exists(txt_path):
         print(f"[Pipeline] 🎙️  Transcribing with Whisper...")
-        # device="auto" automatically uses CUDA if available, else CPU.
-        whisper_model = WhisperModel("large-v3", device="auto", compute_type="default")
+        # Forcing CPU to avoid "cublas64_12.dll is not found" errors on non-CUDA systems
+        whisper_model = WhisperModel("large-v3", device="cpu", compute_type="int8")
 
         # Quick detection pass
         _, info = whisper_model.transcribe(
@@ -746,8 +746,11 @@ def run_pipeline(file_path: str, file_type: str, category: str, item_id: int = N
     print(f"{'='*60}")
 
     # Step 0 — Sync to Drive (Async)
-    # This was moved from app.py to here to make the UI response faster.
-    _sync_to_drive_step(file_path, file_type, category, kwargs.get("original_name"), item_id)
+    # Skip if drive_file_id was already obtained by app.py (prevents duplicate uploads)
+    if not kwargs.get("skip_drive_sync"):
+        _sync_to_drive_step(file_path, file_type, category, kwargs.get("original_name"), item_id)
+    else:
+        print(f"[Pipeline] ⏩ Skipping Drive sync (already handled by app.py)")
 
     try:
         if file_type == "document":
@@ -776,7 +779,7 @@ def run_pipeline(file_path: str, file_type: str, category: str, item_id: int = N
         traceback.print_exc()
 
 
-def launch_pipeline_background(file_path: str, file_type: str, category: str, item_id: int = None, original_name: str = None):
+def launch_pipeline_background(file_path: str, file_type: str, category: str, item_id: int = None, original_name: str = None, **kwargs):
     """
     Launches run_pipeline() in a daemon background thread.
     Call this from app.py — it returns immediately.
@@ -784,7 +787,7 @@ def launch_pipeline_background(file_path: str, file_type: str, category: str, it
     t = threading.Thread(
         target=run_pipeline,
         args=(file_path, file_type, category, item_id),
-        kwargs={"original_name": original_name},
+        kwargs={"original_name": original_name, **kwargs},
         daemon=True,
         name=f"pipeline-{os.path.basename(file_path)}"
     )

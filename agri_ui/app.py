@@ -802,6 +802,10 @@ def api_transcribe():
         )
         if whisper_lang:
             kwargs["language"] = whisper_lang   # forces Whisper to decode in this language
+            if whisper_lang == "ur":
+                # Guide Whisper to output Urdu script (Nastaliq/Arabic script) and not Roman Urdu
+                kwargs["prompt"] = "یہ ایک زراعتی سوال ہے۔ براہ کرم اردو رسم الخط میں جواب دیں۔"
+
         transcript = client.audio.transcriptions.create(**kwargs)
         return jsonify({"transcript": transcript.text})
     except Exception as e:
@@ -860,7 +864,13 @@ def get_response():
                    for m in reversed(recent)]
 
         # ── 5. Run RAG pipeline ────────────────────────────────────────────────
-        rag_result  = rag_pipeline(user_message, history=history)
+        # ui_lang is sent by the frontend when the user has the language toggle
+        # set to Urdu ('ur') or English ('en').  It overrides the character-set
+        # detector so that voice queries (which may be Romanized) still produce
+        # the correct response language.
+        ui_lang  = data.get("ui_lang", "").strip().lower()
+        force_lang = ui_lang if ui_lang in ("ur", "en") else None
+        rag_result  = rag_pipeline(user_message, history=history, force_lang=force_lang)
         # rag_pipeline now returns {"response": str, "sources": list[dict]}
         # Guard against older callers that might still return a plain string
         if isinstance(rag_result, dict):
@@ -874,32 +884,58 @@ def get_response():
         # RAG returns doc_name which is the .txt file (e.g. "paper_english.txt").
         # Strip language suffix to get the base name, then look up the Resource row.
         def _enrich_source(src: dict) -> dict:
-            """Add file_url pointing to the actual uploaded file in the repository."""
+            """
+            Enrich a RAG source dict with a clickable URL and source_type.
+            Works for documents, images AND videos — including Drive-only resources
+            that have no local filename on disk.
+            """
             doc_name = src.get("name", "")
             if not doc_name:
                 return src
-            # Strip common suffixes added by the translation pipeline
+            # Strip suffixes added by the translation/transcription pipeline
             base = doc_name
             for suffix in ("_english.txt", "_urdu.txt", "_eng.txt", "_ur.txt", ".txt"):
                 if base.lower().endswith(suffix):
                     base = base[: -len(suffix)]
                     break
             try:
-                # Search Resources table by partial match on original_name or filename
+                # Match by original_name (Drive files) or local filename
                 resource = Resource.query.filter(
                     db.or_(
                         Resource.original_name.ilike(f"%{base}%"),
                         Resource.filename.ilike(f"%{base}%"),
                     )
                 ).filter(Resource.file_type != "audio").first()
+
                 if resource:
                     enriched = dict(src)
-                    if resource.file_type == "video" and resource.video_link:
-                        enriched["file_url"] = resource.video_link
-                    elif resource.filename:
-                        enriched["file_url"] = f"/api/repository/file/{resource.filename}"
+                    # Tag the source type so the frontend can show the right icon
+                    enriched["source_type"] = resource.file_type   # document / image / video
+
+                    # Build the best available URL
+                    if resource.file_type == "video":
+                        # Prefer the dedicated video link (YouTube / direct URL)
+                        if resource.video_link:
+                            enriched["file_url"] = resource.video_link
+                        elif resource.drive_view_link:
+                            enriched["file_url"] = resource.drive_view_link
+                    elif resource.file_type == "image":
+                        # Images are usually Drive-only (no local file)
+                        if resource.drive_view_link:
+                            enriched["file_url"] = resource.drive_view_link
+                        elif resource.filename:
+                            enriched["file_url"] = f"/api/repository/file/{resource.filename}"
+                    else:
+                        # Document: prefer local file, then Drive link
+                        if resource.filename:
+                            enriched["file_url"] = f"/api/repository/file/{resource.filename}"
+                        elif resource.drive_view_link:
+                            enriched["file_url"] = resource.drive_view_link
+
+                    # Always expose the Drive link as a fallback
                     if resource.drive_view_link:
                         enriched["link"] = resource.drive_view_link
+
                     return enriched
             except Exception as exc:
                 print(f"[Sources] ⚠️  DB lookup failed for '{doc_name}': {exc}")
@@ -1603,6 +1639,15 @@ def resource_to_dict(r):
     }
 
 
+# ── Drive sync cooldown ─────────────────────────────────────────────────────
+# Prevents the sync from hammering the Drive API on every search keystroke.
+# Only one sync can run at a time, and at most once every 5 minutes.
+import time as _time_module
+_drive_sync_lock = threading.Lock()
+_drive_last_sync: float = 0.0
+_DRIVE_SYNC_COOLDOWN = 300  # seconds (5 minutes)
+
+
 @app.route("/api/repository", methods=["GET"])
 @login_required
 def api_repo_list():
@@ -1616,8 +1661,10 @@ def api_repo_list():
     def _sync_drive_to_db():
         """
         Fetch all files in the configured Drive folder (recursively),
-        compare against known drive_file_ids in PostgreSQL, and insert
-        any missing records so direct Drive uploads are reflected in the UI.
+        compare against known drive_file_ids AND original_names in PostgreSQL,
+        and insert any missing records so direct Drive uploads are reflected in the UI.
+        Files uploaded via PQNK portal already have a drive_file_id AND an original_name,
+        so this double-check prevents the sync from creating duplicate rows for them.
         """
         try:
             with app.app_context():
@@ -1632,13 +1679,24 @@ def api_repo_list():
                     .filter(Resource.drive_file_id.isnot(None)).all()
                 }
 
+                # ALSO build a set of original_names to catch files uploaded via portal
+                # where drive_file_id may have been set but original_name is also stored.
+                existing_names = {
+                    row[0].lower() for row in
+                    db.session.query(Resource.original_name)
+                    .filter(Resource.original_name.isnot(None)).all()
+                }
+
                 added = 0
                 for f in drive_files:
                     file_id = f.get("id")
                     if not file_id or file_id in existing_ids:
-                        continue  # already tracked
+                        continue  # already tracked by Drive ID
 
-                    name      = f.get("name", "Untitled")
+                    name = f.get("name", "Untitled")
+                    if name.lower() in existing_names:
+                        continue  # already tracked by filename — skip to avoid duplicate
+
                     mime      = f.get("mimeType", "")
                     view_link = f.get("webViewLink", "")
 
@@ -1655,10 +1713,15 @@ def api_repo_list():
                     # Strip extension for title
                     title = name.rsplit(".", 1)[0] if "." in name else name
 
+                    # Use the Drive subfolder name as the category.
+                    # If the file lives in the root (no subfolder), fall back to "Uncategorized".
+                    folder_name = f.get("folder_name", "").strip()
+                    category    = folder_name if folder_name else "Uncategorized"
+
                     new_resource = Resource(
                         title           = title,
-                        description     = f"Imported from Google Drive",
-                        category        = "General",
+                        description     = "Imported from Google Drive",
+                        category        = category,
                         file_type       = ftype,
                         original_name   = name,
                         drive_file_id   = file_id,
@@ -1668,14 +1731,43 @@ def api_repo_list():
                     existing_ids.add(file_id)
                     added += 1
 
-                if added:
+                # ── Patch existing 'General' rows that now have a folder name ────
+                # On every sync pass, update resources that were imported before
+                # the folder-name feature existed and still carry the old default.
+                updated = 0
+                for f in drive_files:
+                    file_id     = f.get("id")
+                    folder_name = f.get("folder_name", "").strip()
+                    if not file_id or not folder_name:
+                        continue
+                    resource = Resource.query.filter_by(
+                        drive_file_id=file_id, category="General"
+                    ).first()
+                    if resource is None:
+                        resource = Resource.query.filter_by(
+                            drive_file_id=file_id, category="Uncategorized"
+                        ).first()
+                    if resource and resource.category in ("General", "Uncategorized"):
+                        resource.category = folder_name
+                        updated += 1
+
+                if added or updated:
                     db.session.commit()
-                    print(f"[DriveSync] ✅ Imported {added} new file(s) from Google Drive")
+                    print(f"[DriveSync] ✅ Imported {added} new, updated {updated} category labels")
         except Exception as exc:
             print(f"[DriveSync] ⚠️ Sync error (non-fatal): {exc}")
 
-    # Fire sync in background so it doesn't slow down the API response
-    threading.Thread(target=_sync_drive_to_db, daemon=True).start()
+    # Fire sync in background — but only if cooldown has elapsed and no other sync is running
+    global _drive_last_sync
+    now = _time_module.time()
+    if now - _drive_last_sync > _DRIVE_SYNC_COOLDOWN and _drive_sync_lock.acquire(blocking=False):
+        _drive_last_sync = now  # mark sync started immediately to block concurrent syncs
+        def _guarded_sync():
+            try:
+                _sync_drive_to_db()
+            finally:
+                _drive_sync_lock.release()
+        threading.Thread(target=_guarded_sync, daemon=True).start()
 
     q         = request.args.get("q", "").strip()
     category  = request.args.get("category", "")
@@ -1686,8 +1778,10 @@ def api_repo_list():
     # Audio is hidden from all repository views; it exists only for Qdrant/PG ingestion
     query = Resource.query.filter(Resource.file_type != 'audio')
     if q:
+        # Smart search: check title, category, keywords, and description
         query = query.filter(
             (Resource.title.ilike(f"%{q}%")) |
+            (Resource.category.ilike(f"%{q}%")) |
             (Resource.keywords.ilike(f"%{q}%")) |
             (Resource.description.ilike(f"%{q}%"))
         )
@@ -1873,7 +1967,8 @@ def api_repo_upload():
                 file_type=file_type,
                 category=category,
                 item_id=resource.id,
-                original_name=original_name
+                original_name=original_name,
+                skip_drive_sync=True  # Drive sync already done synchronously above
             )
         except Exception as _pe:
             print(f"[Pipeline] ⚠️ Could not start pipeline: {_pe}")

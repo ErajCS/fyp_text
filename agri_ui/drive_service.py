@@ -174,7 +174,13 @@ def upload_file(local_path: str, filename: str, mime_type: str = "application/oc
         logger.info(f"✅ Drive Sync OK: {filename} uploaded to {current_parent}")
         return {"file_id": file_id, "view_link": view_link}
     except Exception as exc:
-        logger.error(f"Drive upload failed for {filename}: {exc}")
+        err_msg = str(exc)
+        if "storageQuotaExceeded" in err_msg:
+            logger.error(f"❌ Drive Storage Quota Exceeded for {filename}. "
+                         "NOTE: Service Accounts have 0 bytes of storage. "
+                         "Please ensure 'token.json' is valid or use a Shared Drive.")
+        else:
+            logger.error(f"Drive upload failed for {filename}: {exc}")
         return {}
 
 
@@ -199,8 +205,11 @@ def list_folder_contents(folder_id: str):
 def list_all_files_recursive(folder_id: str = None) -> list:
     """
     Recursively list ALL non-folder files in the root Drive folder (and subfolders).
-    Returns a flat list of dicts: [{id, name, mimeType, webViewLink}, ...]
-    This is used for the bidirectional sync to detect files added directly to Drive.
+    Returns a flat list of dicts:
+        [{id, name, mimeType, webViewLink, folder_name}, ...]
+    `folder_name` is the name of the immediate parent subfolder (empty string if
+    the file lives directly in the root folder).  This is used by the sync code
+    to derive the resource category from the Drive folder hierarchy.
     """
     drive = _get_drive()
     if not drive:
@@ -213,7 +222,12 @@ def list_all_files_recursive(folder_id: str = None) -> list:
 
     all_files = []
 
-    def _recurse(parent_id: str):
+    def _recurse(parent_id: str, current_folder_name: str = ""):
+        """
+        parent_id           — Drive folder ID to list.
+        current_folder_name — human-readable name of this folder (used as category).
+                              Empty string means we are at the root level.
+        """
         query = f"'{parent_id}' in parents and trashed = false"
         try:
             page_token = None
@@ -230,8 +244,12 @@ def list_all_files_recursive(folder_id: str = None) -> list:
                 resp = drive.files().list(**kwargs).execute()
                 for item in resp.get("files", []):
                     if item["mimeType"] == "application/vnd.google-apps.folder":
-                        _recurse(item["id"])   # descend into subfolder
+                        # Recurse into the subfolder, passing its name as the
+                        # new "current_folder_name" so files inside inherit it.
+                        _recurse(item["id"], item["name"])
                     else:
+                        # Attach the enclosing folder's name for category mapping
+                        item["folder_name"] = current_folder_name
                         all_files.append(item)
                 page_token = resp.get("nextPageToken")
                 if not page_token:

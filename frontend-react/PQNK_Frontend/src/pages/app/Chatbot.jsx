@@ -320,6 +320,11 @@ function MessageBubble({ msg, index, copiedId, onCopy, isStreaming }) {
                 // Prefer internal file_url (opens the actual PDF/image in repo),
                 // fall back to drive_view_link, then render as plain text
                 const href = s.file_url || s.link || null;
+                // Choose an icon based on the source type returned by the backend
+                const typeIcon =
+                  s.source_type === "image" ? "🖼️ " :
+                    s.source_type === "video" ? "🎥 " :
+                      s.source_type === "document" ? "📄 " : "";
                 return (
                   <div key={idx} className="flex items-center gap-1.5">
                     <span className="text-emerald-400 text-[10px]">•</span>
@@ -327,10 +332,10 @@ function MessageBubble({ msg, index, copiedId, onCopy, isStreaming }) {
                       <a href={href} target="_blank" rel="noopener noreferrer"
                         className="text-[11px] text-emerald-300 hover:text-emerald-100 underline underline-offset-2 transition-colors truncate max-w-[280px]"
                         title={s.name}>
-                        {s.name}
+                        {typeIcon}{s.name}
                       </a>
                     ) : (
-                      <span className="text-[11px] text-white/50 truncate max-w-[280px]" title={s.name}>{s.name}</span>
+                      <span className="text-[11px] text-white/50 truncate max-w-[280px]" title={s.name}>{typeIcon}{s.name}</span>
                     )}
                   </div>
                 );
@@ -525,7 +530,11 @@ export default function Chatbot() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ msg: content, conversation_id: activeConvId }),
+        body: JSON.stringify({
+          msg: content,
+          conversation_id: activeConvId,
+          ui_lang: lang,   // tell backend which language the UI is set to
+        }),
       });
 
       if (!res.ok) throw new Error("Status " + res.status);

@@ -2,11 +2,12 @@ import { useNavigate, useLocation } from "react-router-dom";
 
 const navItems = [
     { label: "Command Center", path: "/super-admin-dashboard", icon: "⚡" },
-    { label: "User Registry", path: "/super-admin-dashboard/users", icon: "👥" },
-    { label: "Admin Management", path: "/super-admin-dashboard/admins", icon: "🛡️" },
-    { label: "Analytics", path: "/super-admin-dashboard/analytics", icon: "📈" },
+    { label: "Content Management", path: "/super-admin-dashboard/content", icon: "📁" },
     { label: "AI Assistant", path: "/chatbot", icon: "🤖" },
+    { label: "Browse Repository", path: "/browse-repository", icon: "🔍" },
+    { label: "Profile", path: "/profile", icon: "👤" },
 ];
+
 
 function getInitials(name = "") {
     return name.split(" ").map(n => n[0]).slice(0, 2).join("").toUpperCase() || "SA";

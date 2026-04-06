@@ -34,7 +34,7 @@ def main():
         with open('token.json', 'w') as token:
             token.write(creds.to_json())
             
-    print("✅ token.json has been generated successfully!")
+    print("[OK] token.json has been generated successfully!")
 
 if __name__ == '__main__':
     main()
