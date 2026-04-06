@@ -45,7 +45,7 @@ Submitted to DURS 2026 — Stream: Artificial Intelligence \& Machine Learning.}
     \textit{Dhanani School of Science \& Engineering}\\
     \textit{Habib University}\\
     Karachi, Pakistan\\
-    wajeeh.haider@sse.habib.edu.pk
+    mw08325@st.habib.edu.pk
   }
   \and
   \IEEEauthorblockN{Eraj Zehra}
@@ -53,7 +53,7 @@ Submitted to DURS 2026 — Stream: Artificial Intelligence \& Machine Learning.}
     \textit{Dhanani School of Science \& Engineering}\\
     \textit{Habib University}\\
     Karachi, Pakistan\\
-    eraj.zehra@sse.habib.edu.pk
+    ez08158@st.habib.edu.pk
   }
   \and
   \IEEEauthorblockN{Hira Tanveer}
@@ -61,7 +61,7 @@ Submitted to DURS 2026 — Stream: Artificial Intelligence \& Machine Learning.}
     \textit{Dhanani School of Science \& Engineering}\\
     \textit{Habib University}\\
     Karachi, Pakistan\\
-    hira.tanveer@sse.habib.edu.pk
+    ht08038@st.habib.edu.pk
   }
   \and
   \IEEEauthorblockN{Marium Zeeshan}
@@ -69,7 +69,7 @@ Submitted to DURS 2026 — Stream: Artificial Intelligence \& Machine Learning.}
     \textit{Dhanani School of Science \& Engineering}\\
     \textit{Habib University}\\
     Karachi, Pakistan\\
-    marium.zeeshan@sse.habib.edu.pk
+    mz08488@st.habib.edu.pk
   }
   \and
   \IEEEauthorblockN{Dr. Faisal Alvi (Supervisor)}
@@ -86,8 +86,8 @@ Submitted to DURS 2026 — Stream: Artificial Intelligence \& Machine Learning.}
 % ── Abstract ──────────────────────────────────────────────────────────────────
 \begin{abstract}
 In Pakistan, expert agronomic knowledge critical to smallholder farmers remains fragmented
-across informal, heterogeneous media channels---including video lectures, WhatsApp broadcasts,
-social media posts, and printed documents---rendering it undiscoverable and inaccessible at
+across informal, heterogeneous media channels, including video lectures, WhatsApp broadcasts,
+social media posts, and printed documents,  rendering it undiscoverable and inaccessible at
 scale. This paper presents the \textbf{PQNK Knowledge Intelligence System}, an AI-powered
 knowledge repository and expert conversational agent developed in collaboration with
 \textbf{Pakistan Agriculture Research (PAR)}. The system is centred on
@@ -95,8 +95,8 @@ knowledge repository and expert conversational agent developed in collaboration 
 pioneered by Dr.~Asif Sharif, whose domain expertise currently reaches farmers exclusively
 through direct, manual consultation. We deliver four core contributions:
 (1)~a \textbf{fully automated multimodal ingestion pipeline} that extracts, translates, and
-indexes the scattered PQNK corpus---spanning documents (with embedded diagram extraction),
-stand-alone images, video lectures, and \emph{audio recordings}---via Faster-Whisper
+indexes the scattered PQNK corpus, spanning documents,
+stand-alone images, video lectures, and \emph{audio recordings}, via Faster-Whisper
 transcription, GPT-4o-mini vision analysis, OCR, bilingual translation, semantic chunking,
 and dense vector embedding into a Qdrant vector store;
 (2)~a \textbf{domain-restricted Retrieval-Augmented Generation (RAG) chatbot} that grounds
@@ -120,9 +120,9 @@ Systems, Sustainable Farming, Vector Databases, Knowledge Digitalisation.
 % ─────────────────────────────────────────────────────────────────────────────
 \section{Introduction}
 
-Agriculture is the cornerstone of Pakistan's economy, contributing approximately 19\% to GDP
-and employing around 37\% of the labour force \cite{pbs2023}. Despite its importance,
-smallholder farmers—who cultivate the majority of arable land—remain systematically excluded
+Agriculture is the cornerstone of Pakistan's economy, contributing approximately 24\% to GDP
+and employing around 35\% of the workforce \cite{pbs2023}. Despite its importance,
+smallholder farmers, who cultivate the majority of arable land, remain systematically excluded
 from expert agronomic knowledge that could substantially improve their yields, reduce input
 costs, and protect soil health.
 
@@ -131,13 +131,13 @@ Sharif and operationalised by Pakistan Agriculture Research (PAR), offers a vali
 path toward sustainable productivity through natural soil rejuvenation, water conservation,
 biological pest management, and seed sovereignty. However, this knowledge is disseminated
 purely through direct consultation: in-person sessions, WhatsApp voice messages, and
-printed guides. This introduces a fundamental bottleneck—expert time is finite, knowledge
+printed guides. This introduces a fundamental bottleneck, expert time is finite, knowledge
 is scattered across incompatible formats (YouTube lectures, PDFs, social media, WhatsApp),
 and physical outreach cannot reach remote farming communities at scale.
 
 Large Language Models (LLMs) are often proposed as a solution, yet they introduce critical
-risks in specialised domains: general-purpose LLMs hallucinate domain-specific
-advice \cite{ji2023survey}—recommending, for instance, synthetic fertilisers that PQNK
+risks in specialized domains: general-purpose LLMs hallucinate domain-specific
+advice \cite{ji2023survey} recommending, for instance, synthetic fertilizers that PQNK
 explicitly prohibits. Moreover, PQNK's internally consistent philosophy is absent from
 standard LLM training corpora, making out-of-the-box generation unreliable.
 
@@ -145,8 +145,7 @@ Retrieval-Augmented Generation (RAG) addresses both issues by anchoring model ou
 verified external knowledge base before generation \cite{lewis2020rag}. This paper presents
 the \textbf{PQNK Knowledge Intelligence System}: a full-stack, bilingual AI platform that:
 (1)~automatically ingests, processes, and vector-indexes heterogeneous PQNK material
-through an asynchronous multimodal pipeline; and (2)~delivers expert-grounded, zero-hallucination
-conversational guidance in Urdu and English with audio output.
+through an asynchronous multimodal pipeline; and (2)~delivers expert-grounded, conversational guidance in Urdu and English with audio output.
 
 \subsection*{Problem Statement}
 No unified, searchable interface for PQNK knowledge currently exists. Farmers must navigate
@@ -157,11 +156,11 @@ scalable workflow to process and index newly produced content.
 \begin{enumerate}[noitemsep, leftmargin=*]
   \item A fully automated 10-stage multimodal ingestion pipeline supporting documents
         (including embedded PDF image extraction), stand-alone images, video lectures,
-        and \textbf{audio recordings} (new modality).
+        and \textbf{audio recordings}.
   \item A domain-restricted hybrid RAG chatbot with bilingual (Urdu/English) text,
-        synthesised neural audio output, and clickable source provenance links.
+        synthesized neural audio output, and clickable source provenance links.
   \item A production-grade role-based knowledge platform integrating React, Flask,
-        PostgreSQL, Qdrant, and Google Drive with two-way deletion synchronisation.
+        PostgreSQL, Qdrant, and Google Drive with two-way deletion synchronization.
   \item An invisible audio ingestion pathway that enriches the AI knowledge base without
         exposing audio files in the public repository interface, enabling private corpus
         expansion from expert voice recordings.
@@ -182,8 +181,8 @@ support multimodal content.
 \subsection{Large Language Models and Hallucination}
 The emergence of instruction-tuned LLMs such as GPT-4 \cite{openai2024} substantially raised
 the ceiling of conversational quality. However, as documented in Ji et~al. \cite{ji2023survey},
-LLMs frequently generate plausible but factually incorrect content—a critical risk in
-high-stakes domains such as agronomy, where incorrect fertiliser or irrigation advice can
+LLMs frequently generate plausible but factually incorrect content, a critical risk in
+high-stakes domains such as agronomy, where incorrect fertilizer or irrigation advice can
 result in total crop loss.
 
 \subsection{Retrieval-Augmented Generation}
@@ -191,13 +190,13 @@ Lewis et~al. \cite{lewis2020rag} introduced RAG as a principled approach for gro
 LLM outputs within an external document corpus, achieving strong results on knowledge-intensive
 tasks. Balaguer et~al. \cite{balaguer2024} demonstrated that RAG systems outperform
 fine-tuned LLMs on domain-specific tasks while requiring substantially lower computational
-cost—particularly relevant for academic deployments with limited budgets. Feng et~al.
+cost, particularly relevant for academic deployments with limited budgets. Feng et~al.
 \cite{feng2024} further extended RAG to multimodal modalities by coupling visual detection
 models with language generation for plant disease advisory.
 
 \subsection{Multilingual NLP and Speech Recognition}
 Nabila et~al. \cite{nabila2022} demonstrated the effectiveness of leveraging Neural Machine
-Translation (NMT)—specifically the Google Translate API—for Urdu domain-specific text,
+Translation (NMT), specifically the Google Translate API for Urdu domain-specific text,
 particularly where custom parallel corpora are unavailable. Radford et~al. \cite{whisper2023}
 showed that the Whisper model, trained on 680,000+ hours of multilingual audio via
 weak supervision, achieves robust automatic speech recognition across diverse accents,
@@ -235,10 +234,8 @@ Audio Recordings (expert voice lectures) & $\sim$200 \\
 \end{tabular}
 \end{table}
 
-Content is organised across six PQNK knowledge pillars: natural soil rejuvenation, water
-conservation, biological pest management, seed sovereignty, knowledge integration, and
-community farming. Each item is categorised by topic (soil science, crop production,
-water management, PQNK research).
+Content is organised across PQNK knowledge with each item being categorised by topic (soil science, crop production,
+water management, PQNK research etc.).
 
 \subsection{System Architecture Overview}
 
@@ -290,18 +287,12 @@ deletion of a resource from the platform immediately propagates the deletion to 
 
 \textit{Stages 2--3 — Content Extraction.}
 \begin{itemize}[noitemsep, leftmargin=*]
-  \item \textbf{Documents (Text)}: Native text is extracted using PyMuPDF (\texttt{fitz}).
-        For scanned or image-based PDFs, Google Cloud Vision API provides OCR as a fallback.
-        Bilingual (Urdu and English) \texttt{.txt} files are produced and indexed.
-
+  \item \textbf{Documents (Text)}: Text is extracted using Cloud Vision API and then translated by the help of Deep Translator API from Google Translate.
   \item \textbf{Documents (Embedded Images) — new sub-pipeline}: After text extraction, the
         document pipeline also inspects the PDF for embedded diagrams, instructional illustrations,
         and tables using \texttt{extracting\_images\_from\_pdfs.py}. Each page is scanned for
         embedded image objects; decorative images (logos, low-detail graphics) are filtered out
-        using pixel standard-deviation thresholds and template-matching against a logo library.
-        Surviving images undergo Tesseract OCR-based language detection
-        (\texttt{detection\_of\_lang\_and\_renaming.py}), are renamed with \texttt{\_eng} or
-        \texttt{\_urdu} suffixes, and are then described bilingually by GPT-4o-mini
+        using pixel standard-deviation thresholds, tables are identified using img2table library and template-matching is done against a logo library and are then described bilingually by GPT-4o-mini
         (\texttt{translating\_images.py}). The resulting \texttt{.txt} files are ingested into
         Qdrant and PostgreSQL alongside the document's textual content. This ensures no
         visual knowledge embedded inside any PDF is left unindexed.
@@ -309,20 +300,20 @@ deletion of a resource from the platform immediately propagates the deletion to 
   \item \textbf{Images}: Stand-alone uploaded images follow the same language detection,
         renaming, and GPT-4o-mini bilingual description workflow described above.
 
-  \item \textbf{Audio Recordings --- new modality}: Expert voice lectures uploaded as
+  \item \textbf{Audio Recordings ,  new modality}: Expert voice lectures uploaded as
         MP3 or WAV files bypass FFmpeg audio extraction (the file is already audio) and
         are fed directly to Faster-Whisper (large-v3) for transcription. This removes
         the FFmpeg step entirely, halving pipeline latency for pure-audio uploads relative
         to video. Transcripts undergo identical Gemini refinement, bilingual translation,
         and ingestion as video-derived transcripts. Crucially, audio resources are flagged
         \texttt{file\_type = `audio'} in PostgreSQL and are \emph{filtered out} of the
-        public \texttt{/api/repository} listing---they enrich the RAG knowledge base
+        public \texttt{/api/repository} listing, they enrich the RAG knowledge base
         invisibly, enabling corpus expansion from private expert voice recordings without
         cluttering the repository interface for end users.
 
   \item \textbf{Videos}: Audio is first extracted to MP3 via FFmpeg. The audio stream is
-        then transcribed using \texttt{faster-whisper} (large-v3 variant)---a
-        CTranslate2-optimised implementation of OpenAI Whisper---running locally on CPU.
+        then transcribed using \texttt{faster-whisper} (large-v3 variant), a
+        CTranslate2-optimised implementation of OpenAI Whisper, running locally on CPU.
         This eliminates per-video API cost, supports Urdu and mixed-language
         lectures, and functions in network-constrained environments. Raw transcripts are
         subsequently refined by the Google GenAI (Gemini) API to correct dialectal
@@ -442,7 +433,7 @@ scale) and completeness (1--5 scale):
 \midrule
 Factual Accuracy   & 4.3 / 5.0 & 0.61 \\
 Completeness       & 3.9 / 5.0 & 0.73 \\
-Hallucination Rate & 4\% (2/50) & --- \\
+Hallucination Rate & 4\% (2/50) & ,  \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -499,9 +490,9 @@ Edge TTS synthesis              & 1,100 \\
 
 This paper presented the \textbf{PQNK Knowledge Intelligence System}, a full-stack AI
 platform that addresses the knowledge-access gap facing Pakistani smallholder farmers.
-By combining a fully automated multimodal ingestion pipeline---now covering documents
+By combining a fully automated multimodal ingestion pipeline, now covering documents
 (with embedded image extraction), stand-alone images, video lectures, and audio
-recordings---with a domain-restricted bilingual RAG chatbot, the system delivers
+recordings, with a domain-restricted bilingual RAG chatbot, the system delivers
 Dr.~Asif Sharif's expert agronomic guidance at scale while preserving the specificity
 and internal consistency of PQNK principles.
 
@@ -511,92 +502,36 @@ enables concurrent administrative uploads without disrupting the user-facing ser
 and the bilingual mirror index enables true cross-lingual knowledge retrieval. The
 newly introduced audio modality further expands corpus coverage, enabling private
 expert voice recordings to silently enrich the knowledge base without cluttering the
-public repository interface---a design pattern applicable to any domain where curated
+public repository interface, a design pattern applicable to any domain where curated
 expert knowledge must remain controlled.
 
 We believe this system constitutes a replicable and scalable blueprint for expert
-knowledge digitalisation across any low-resource, multilingual domain---wherever human
+knowledge digitalisation across any low-resource, multilingual domain, wherever human
 expertise is currently trapped in manual, unindexed formats.
 
 \textbf{Future Work}:
 \begin{enumerate}[noitemsep, leftmargin=*]
 
-  \item \textbf{WhatsApp Bot Deployment (Twilio WhatsApp API).}
-        Farmers across Pakistan rely on WhatsApp as their primary communication channel.
-        Integrating the RAG engine with the Twilio WhatsApp API would allow farmers to
-        query the system via voice note or text without requiring any smartphone app
-        installation or internet literacy. This constitutes the single highest-impact
-        deployment extension, directly addressing the rural digital divide.
+  \item \textbf{WhatsApp Bot Deployment.}
+        Farmers across Pakistan rely on WhatsApp. Integrating the RAG engine with the Twilio
+        WhatsApp API would allow users to query the system via voice note or text without
+        requiring any internet literacy, directly addressing the rural digital divide.
 
   \item \textbf{Dedicated Urdu Vector Collection.}
         Current Urdu queries are translated to English before retrieval, incurring a
         8-point precision gap (Table~\ref{tab:retrieval}). Maintaining a parallel
-        Qdrant collection of Urdu-script embeddings using a multilingual encoder
-        (e.g., \texttt{paraphrase-multilingual-MiniLM-L12-v2}) and merging
-        dual-collection results would close this gap without translation latency.
-
-  \item \textbf{CLIP-Based Visual Semantic Search.}
-        Replacing the textual image description pipeline with CLIP (Contrastive
-        Language--Image Pre-Training) embeddings would enable image-native vector
-        retrieval: a farmer photographing a diseased leaf could receive agronomic
-        guidance without any OCR or description step. This would make the system
-        genuinely multimodal at the query level, not just the ingestion level.
-
-  \item \textbf{Task Queue Architecture (Celery + Redis).}
-        The current single-threaded Faster-Whisper transcription step creates a
-        resource contention bottleneck under concurrent uploads. Migrating the
-        ingestion pipeline to a Celery distributed task queue backed by Redis would
-        decouple uploads from processing, enabling horizontal scaling and graceful
-        handling of throughput spikes without OOM errors.
+        collection of Urdu-script embeddings using a multilingual encoder would close
+        this gap without translation latency.
 
   \item \textbf{Offline-First Progressive Web App (PWA).}
-        Rural Pakistani farming communities frequently experience network interruptions.
-        Converting the React frontend to a PWA with a service worker cache would allow
-        farmers to submit queries and browse previously retrieved answers offline,
-        with synchronisation occurring when connectivity is re-established. This is
-        particularly well-aligned with the voice-input chatbot interface.
+        Rural farming communities frequently experience network interruptions. Converting
+        the React frontend to a PWA with service worker caching would allow farmers to
+        browse previously retrieved answers offline.
 
-  \item \textbf{Retrieval-Augmented Fine-Tuning (RAFT).}
-        Gorman et~al. demonstrate that a language model fine-tuned on domain-specific
-        question-answer pairs derived from its own retrieval context achieves
-        substantially lower hallucination than prompt-only RAG. A RAFT pass on the
-        full PQNK corpus---with answers verified by PAR agronomists---could reduce
-        the remaining 4\% hallucination rate to near-zero and reduce dependence on
-        the GPT-4o API entirely, lowering per-query cost.
-
-  \item \textbf{RLHF from Farmer Feedback.}
-        Embedding a thumbs-up / thumbs-down feedback mechanism in the chatbot UI would
-        accumulate a labelled preference dataset over time. This dataset could be used
-        to train a reward model for Reinforcement Learning from Human (farmer) Feedback,
-        progressively aligning response quality with the precise standards and idioms
-        valued by the target user community---a feedback loop entirely absent from
-        static fine-tuning approaches.
-
-  \item \textbf{Multi-Agent Retrieval Architecture.}
-        For complex agronomic queries spanning multiple knowledge pillars
-        (e.g., soil health $\cap$ irrigation $\cap$ pest status), a multi-agent
-        orchestrator could dispatch independent retrieval agents to each pillar in
-        parallel and synthesise results using a Mixture-of-Experts fusion layer.
-        This would substantially improve answer completeness for the multi-hop query
-        category, which currently represents the weakest retrieval path.
-
-  \item \textbf{IoT Sensor Integration.}
-        Coupling the platform with low-cost soil moisture, temperature, and NPK
-        sensors deployed in PQNK demonstration fields would enable real-time,
-        context-aware advisory: the RAG system could be augmented with live sensor
-        readings as soft context, enabling responses such as ``Your field is
-        currently at 34\% volumetric moisture content---our PQNK guidelines
-        recommend irrigation at 28\% for wheat at this stage.'' This constitutes
-        a step from a static knowledge chatbot to a precision-agriculture decision
-        support system.
-
-  \item \textbf{Federated Deployment for Privacy-Preserving Knowledge Sharing.}
-        Multiple regional PAR offices maintain independent knowledge bases.
-        A federated RAG architecture---where regional Qdrant nodes synchronise
-        vector indices without centralising raw documents---would preserve
-        institutional data sovereignty while enabling cross-border knowledge
-        retrieval. This is directly applicable to any multi-stakeholder expert-system
-        deployment context.
+  \item \textbf{Continuous Alignment via User Feedback.}
+        Embedding a feedback mechanism in the chatbot UI would accumulate a labelled
+        preference dataset over time. This dataset could be used to progressively align
+        response quality with the precise standards and idioms valued by the target community.
 
 \end{enumerate}
 
@@ -666,11 +601,6 @@ vol.~13, no.~9, pp.~212--220, 2022.
 \bibitem{qdrant2023}
 Qdrant Team, \textit{Qdrant Vector Database: Documentation}, 2023.
 [Online]. Available: \url{https://qdrant.tech/documentation/}
-
-\bibitem{ali2022}
-M. Ali and F. U. Rehman,
-``Machine Translation Pipelines for Urdu Agricultural Text: Challenges and Benchmarks,''
-\textit{Journal of Agricultural Informatics}, vol.~13, no.~2, pp.~1--18, 2022.
 
 \end{thebibliography}
 
