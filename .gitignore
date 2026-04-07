@@ -69,7 +69,7 @@ package-lock.json
 test_video/ffmpeg*
 pipeline_workspace/
 
-about-project/RAG_IMPROVEMENTS.md
+about-project/
 about-project/pqnk_research_paper.tex
 about-project/CI_CD.md
 about-project/deployment.md
