@@ -19,6 +19,9 @@
 \usepackage{listings}
 \usepackage{enumitem}
 \usepackage{balance}
+\usepackage{float}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
 
 \hypersetup{colorlinks=true,urlcolor=blue,linkcolor=black,citecolor=black}
 
@@ -40,44 +43,11 @@ Submitted to DURS 2026 — Stream: Artificial Intelligence \& Machine Learning.}
 
 % ── Authors ───────────────────────────────────────────────────────────────────
 \author{
-  \IEEEauthorblockN{Syed Muhammad Wajeeh Haider}
+  \IEEEauthorblockN{Syed Muhammad Wajeeh Haider, Eraj Zehra, Hira Tanveer, Marium Zeeshan, Faisal Alvi}
   \IEEEauthorblockA{
-    \textit{Dhanani School of Science \& Engineering}\\
-    \textit{Habib University}\\
+    \textit{Dhanani School of Science \& Engineering, Habib University}\\
     Karachi, Pakistan\\
-    mw08325@st.habib.edu.pk
-  }
-  \and
-  \IEEEauthorblockN{Eraj Zehra}
-  \IEEEauthorblockA{
-    \textit{Dhanani School of Science \& Engineering}\\
-    \textit{Habib University}\\
-    Karachi, Pakistan\\
-    ez08158@st.habib.edu.pk
-  }
-  \and
-  \IEEEauthorblockN{Hira Tanveer}
-  \IEEEauthorblockA{
-    \textit{Dhanani School of Science \& Engineering}\\
-    \textit{Habib University}\\
-    Karachi, Pakistan\\
-    ht08038@st.habib.edu.pk
-  }
-  \and
-  \IEEEauthorblockN{Marium Zeeshan}
-  \IEEEauthorblockA{
-    \textit{Dhanani School of Science \& Engineering}\\
-    \textit{Habib University}\\
-    Karachi, Pakistan\\
-    mz08488@st.habib.edu.pk
-  }
-  \and
-  \IEEEauthorblockN{Dr. Faisal Alvi (Supervisor)}
-  \IEEEauthorblockA{
-    \textit{Dhanani School of Science \& Engineering}\\
-    \textit{Habib University}\\
-    Karachi, Pakistan\\
-    faisal.alvi@habib.edu.pk
+    \{mw08325@st, ez08158@st, ht08038@st, mz08488@st, faisal.alvi@sse\}.habib.edu.pk
   }
 }
 
@@ -85,31 +55,7 @@ Submitted to DURS 2026 — Stream: Artificial Intelligence \& Machine Learning.}
 
 % ── Abstract ──────────────────────────────────────────────────────────────────
 \begin{abstract}
-In Pakistan, expert agronomic knowledge critical to smallholder farmers remains fragmented
-across informal, heterogeneous media channels, including video lectures, WhatsApp broadcasts,
-social media posts, and printed documents,  rendering it undiscoverable and inaccessible at
-scale. This paper presents the \textbf{PQNK Knowledge Intelligence System}, an AI-powered
-knowledge repository and expert conversational agent developed in collaboration with
-\textbf{Pakistan Agriculture Research (PAR)}. The system is centred on
-\textbf{Paedar Qudratti Nizam-e-Kashtari (PQNK)}, a sustainable natural farming methodology
-pioneered by Dr.~Asif Sharif, whose domain expertise currently reaches farmers exclusively
-through direct, manual consultation. We deliver four core contributions:
-(1)~a \textbf{fully automated multimodal ingestion pipeline} that extracts, translates, and
-indexes the scattered PQNK corpus, spanning documents,
-stand-alone images, video lectures, and \emph{audio recordings}, via Faster-Whisper
-transcription, GPT-4o-mini vision analysis, OCR, bilingual translation, semantic chunking,
-and dense vector embedding into a Qdrant vector store;
-(2)~a \textbf{domain-restricted Retrieval-Augmented Generation (RAG) chatbot} that grounds
-every response exclusively within the curated corpus, eliminating hallucination risks present
-in open-domain LLMs;
-(3)~a \textbf{bilingual audio response interface} delivering synthesised Urdu and English
-voice output to lower literacy and connectivity barriers; and
-(4)~a \textbf{production-grade role-based knowledge platform} with real-time repository
-synchronisation to Google Drive and clickable provenance links in chatbot responses.
-Evaluation over 50 annotated query-answer pairs yields a mean retrieval precision of 0.80
-and a hallucination rate of 4\%, demonstrating the efficacy of the domain-grounding
-mechanism. This work presents a replicable and extensible blueprint for expert knowledge
-digitalisation in multilingual, low-resource agricultural settings.
+In Pakistan, expert agronomic knowledge critical to smallholder farmers remains fragmented across informal channels, rendering it undiscoverable at scale. This paper presents the \textbf{PQNK Knowledge Intelligence System}, an AI-powered conversational agent developed in collaboration with \textbf{Pakistan Agriculture Research (PAR)} to democratise \textbf{Paedar Qudratti Nizam-e-Kashtari (PQNK)}, a sustainable natural farming methodology. Our system delivers four core contributions: (1) a fully automated multimodal ingestion pipeline that extracts and indexes diverse PQNK corpus formats---including audio via Faster-Whisper, images via GPT-4o-mini, and documents---into a Qdrant vector store; (2) a strict domain-restricted Retrieval-Augmented Generation (RAG) chatbot that grounds responses exclusively in the curated material, achieving a low 4\% hallucination rate; (3) a bilingual Urdu and English interface with synthesised audio output to lower literacy barriers; and (4) a production-grade role-based knowledge platform. Evaluation shows a mean retrieval precision of 0.80, proving the system a highly replicable blueprint for scaling expert knowledge in low-resource agricultural settings.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -210,13 +156,9 @@ manual indexing. The PQNK Knowledge Intelligence System simultaneously addresses
 gaps in a single production platform.
 
 % ─────────────────────────────────────────────────────────────────────────────
-\section{Methodology}
+\section{Dataset and Knowledge Corpus}
 
-\subsection{Dataset and Knowledge Corpus}
-
-The PQNK knowledge base was assembled from Dr.~Sharif's existing materials collected from
-distributed sources: YouTube channels, WhatsApp broadcast groups, and formal document
-repositories. The corpus is inherently multimodal and bilingual (Urdu and English):
+The PQNK knowledge base is derived from Dr.~Sharif's distributed materials, such as YouTube lectures, WhatsApp broadcasts, and formal documents. While the total volume of raw PQNK data exceeds 2 TB, the currently ingested subset provided by Pakistan Agriculture Research (PAR) encompasses approximately 80 GB of fully transcribed and indexed content. This corpus, featuring videos up to one hour in duration, is inherently multimodal and bilingual (Urdu and English):
 
 \begin{table}[h!]
 \centering
@@ -236,6 +178,8 @@ Audio Recordings (expert voice lectures) & $\sim$300 \\
 
 Content is organised across PQNK knowledge with each item being categorised by topic (soil science, crop production,
 water management, PQNK research etc.).
+
+\section{Methodology}
 
 \subsection{System Architecture Overview}
 
@@ -391,18 +335,39 @@ Super Admin) at both the React frontend route level and Flask API decorator leve
 Admins may upload and categorise resources; Super Admins manage users and role assignments.
 Registration uses dual-channel OTP verification via Gmail SMTP and Twilio SMS.
 
+\subsection{HCI Interface, Presentability, and Research Process}
+The frontend interface was designed with a strong emphasis on Human-Computer Interaction (HCI) principles to ensure seamless usability for individuals with varying levels of digital literacy, particularly rural farmers. The UI employs a clean, distraction-free React-based architecture featuring distinct visual affordances, high-contrast typography, and intuitive navigation loops. Beyond mere aesthetic presentability, the interface is deeply integrated into the overarching research process: it actively prompts users to query specific agricultural methodologies, validates their understanding through audio-visual feedback loops, and captures their interaction pathways to incrementally refine the RAG engine's generation accuracy. This systematic integration ensures the platform is not only an informational repository but an active participant in the ongoing sustainable farming research ecosystem.
+
+
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\linewidth]{fyp1.jpeg}
+    \caption{The multimodal conversational interface of the PQNK chatbot.}
+    \label{fig:hci_chat}
+
+    \vspace{1em}
+
+    \includegraphics[width=0.85\linewidth]{fyp2.jpeg}
+    \caption{The main dashboard of the PQNK knowledge platform.}
+    \label{fig:hci_dashboard}
+\end{figure}
+
+
 % ─────────────────────────────────────────────────────────────────────────────
 \section{Experiments and Results}
 
 \subsection{Retrieval Quality}
 
-To evaluate how well the chatbot’s responses align with the reference answers, we employ a composite accuracy metric that integrates semantic similarity, keyword coverage, and a hallucination penalty. The final accuracy score is defined as:
+To rigorously evaluate how well the chatbot’s responses align with verified reference answers, we developed a composite accuracy metric inspired by established methodologies in natural language processing literature. While existing studies often isolate either semantic similarity, keyword coverage, or hallucination penalties as independent metrics, we synthesized all three into a unified evaluation formula. To facilitate this, we manually constructed an evaluation suite of question-answer pairs derived directly from the source documents, comparing the ground-truth answers against the bot's generations. 
+
+In our formulation, semantic similarity is intentionally heavily weighted (0.88) because capturing the exact contextual meaning and safety of agricultural advice must be prioritized over mere lexical overlap. This similarity is computed by comparing the \texttt{all-MiniLM-L6-v2} embeddings of the generated responses against the actual answers. Keyword coverage acts as a vital supplementary weight (0.12), matching generated text against a custom-built agronomic term-bank to ensure the inclusion of critical domain terminology. Finally, a hallucination penalty is subtracted to rigidly penalize out-of-domain fabrications. The final accuracy score is formally defined as:
 
 \begin{equation}
 \begin{aligned}
 \text{Final Accuracy} = \max \Big( 0,\; 
-& (0.85 \times \text{Semantic Similarity}) \\
-& + (0.15 \times \text{Keyword Coverage}) \\
+& (0.88 \times \text{Semantic Similarity}) \\
+& + (0.12 \times \text{Keyword Coverage}) \\
 & - \text{Hallucination Penalty} \Big)
 \end{aligned}
 \end{equation}
@@ -423,15 +388,68 @@ verified documents and annotated by a PAR agronomist.
 \toprule
 \textbf{Query Type} & \textbf{P@3} \\
 \midrule
-English factual     & 0.84\\
-Urdu (translated)   & 0.80 \\
+English factual     & 0.82\\
+Urdu (translated)   & 0.80\\
 \textbf{Overall}    & \textbf{0.80} \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-English queries perform above average due to the predominantly English-indexed corpus.
-The 8-point gap for Urdu queries motivates future work on a parallel Urdu vector collection.
+English queries perform above average due to the predominantly English-indexed corpus. The specific impacts of semantic similarity and keyword coverage on accuracy for English queries are plotted in Figures \ref{fig:eng_semantic} and \ref{fig:eng_keyword}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\linewidth]{semantic.png}
+    \caption{Effect of semantic similarity on accuracy (English queries).}
+    \label{fig:eng_semantic}
+    \vspace{1em}
+    \includegraphics[width=0.75\linewidth]{keyword.png}
+    \caption{Effect of keyword coverage on accuracy (English queries).}
+    \label{fig:eng_keyword}
+\end{figure}
+
+The 8-point gap for Urdu queries motivates future work on a parallel Urdu vector collection. A corresponding breakdown of accuracy versus hyperparameter configuration for Urdu queries is shown in Figures \ref{fig:urdu_semantic} and \ref{fig:urdu_keyword}.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\linewidth]{semantic.jpeg}
+    \caption{Effect of semantic similarity on mean accuracy score (Urdu queries).}
+    \label{fig:urdu_semantic}
+    \vspace{1em}
+    \includegraphics[width=0.75\linewidth]{keyword.jpeg}
+    \caption{Effect of keyword coverage on mean accuracy score (Urdu queries).}
+    \label{fig:urdu_keyword}
+\end{figure}
+
+% \begin{figure}[h!]
+% \centering
+% \begin{tikzpicture}
+% \begin{axis}[
+%     xlabel={Similarity Threshold ($\theta$)},
+%     ylabel={Mean Accuracy Score},
+%     xmin=0.1, xmax=0.4,
+%     ymin=0.6, ymax=1.0,
+%     width=8cm,
+%     height=6cm,
+%     xtick={0.1, 0.2, 0.3, 0.4},
+%     ytick={0.6, 0.7, 0.8, 0.9, 1.0},
+%     legend pos=south west,
+%     ymajorgrids=true,
+%     grid style=dashed,
+% ]
+% \addplot[
+%     color=blue,
+%     mark=square,
+%     ]
+%     coordinates {
+%     (0.1, 0.72)(0.2, 0.78)(0.25, 0.80)(0.3, 0.76)(0.4, 0.65)
+%     };
+%     \legend{P@3}
+% \end{axis}
+% \end{tikzpicture}
+% \caption{Effect of semantic similarity threshold ($\theta$) on Retrieval Precision (P@3). The graph highlights changes in accuracy measures as model stringency increases.}
+% \label{fig:threshold_tuning}
+% \end{figure}
 
 
 % \subsection{Response Quality and Hallucination}
