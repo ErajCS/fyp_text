@@ -25,7 +25,7 @@ function UserSurvey({ userId }) {
     const [expanded, setExpanded] = useState(!savedRaw);
     const [submitted, setSubmitted] = useState(!!savedRaw);
     const [survey, setSurvey] = useState(savedRaw || {
-        farmSize: "", crops: [], challenge: "", howHeard: "", yearsExp: "", literacy: "",
+        farmSize: "", crops: [], challenge: "", challengeOther: "", howHeard: "", howHeardOther: "", yearsExp: "", literacy: "",
     });
 
     const toggleCrop = (crop) =>
@@ -122,6 +122,15 @@ function UserSurvey({ userId }) {
                                     <option value="labour">{t("surveyQ3Opt8")}</option>
                                     <option value="other">{t("surveyQ3Opt9")}</option>
                                 </select>
+                                {survey.challenge === "other" && (
+                                    <textarea
+                                        rows={3}
+                                        value={survey.challengeOther}
+                                        onChange={(e) => setSurvey({ ...survey, challengeOther: e.target.value })}
+                                        placeholder="Please describe your biggest challenge…"
+                                        className={`mt-2 w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/15 text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-green-400/40 focus:border-green-400/50 transition resize-none ${isRtl ? "text-right" : ""}`}
+                                    />
+                                )}
                             </div>
 
                             {/* Q4 How Heard */}
@@ -138,6 +147,15 @@ function UserSurvey({ userId }) {
                                     <option value="pedaver">{t("surveyQ4Opt7")}</option>
                                     <option value="other">{t("surveyQ4Opt8")}</option>
                                 </select>
+                                {survey.howHeard === "other" && (
+                                    <textarea
+                                        rows={3}
+                                        value={survey.howHeardOther}
+                                        onChange={(e) => setSurvey({ ...survey, howHeardOther: e.target.value })}
+                                        placeholder="Please tell us how you found out about PQNK…"
+                                        className={`mt-2 w-full px-4 py-2.5 rounded-xl bg-white/10 border border-white/15 text-white text-sm placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-green-400/40 focus:border-green-400/50 transition resize-none ${isRtl ? "text-right" : ""}`}
+                                    />
+                                )}
                             </div>
 
                             {/* Q5 Experience */}
@@ -306,7 +324,7 @@ export default function Profile() {
                     </div>
 
                     {/* ── RIGHT: Edit Form + Survey ── */}
-                    <div className="lg:w-2/3 space-y-6">
+                    <div className="col-span-1 lg:col-span-2 space-y-6">
                         <div className="fade-up-d1 bg-white/10 backdrop-blur-xl border border-white/15 rounded-2xl p-8 shadow-xl">
                             <div className={`flex items-center justify-between mb-7 ${isRtl ? "flex-row-reverse" : ""}`}>
                                 <h3 className="text-lg font-semibold text-white">{t("profileAccountDetails")}</h3>

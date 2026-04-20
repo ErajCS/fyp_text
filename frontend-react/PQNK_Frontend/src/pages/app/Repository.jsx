@@ -299,6 +299,9 @@ export default function Repository() {
                                                     </a>
                                                 )}
                                             </div>
+                                            {r.description && (
+                                                <p className="text-xs text-gray-500 mt-1 line-clamp-2 max-w-lg">{r.description}</p>
+                                            )}
                                             <p className="text-xs text-gray-400 truncate mt-0.5">
                                                 {r.keywords && <span className="mr-3">🏷️ {r.keywords}</span>}
                                                 by {r.uploaded_by} · {r.created_at}

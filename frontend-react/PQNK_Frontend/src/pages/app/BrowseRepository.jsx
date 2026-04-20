@@ -107,10 +107,14 @@ export default function BrowseRepository() {
                                                     {r.category}
                                                 </span>
                                             </div>
-                                            <p className="text-xs text-gray-400 mt-0.5 truncate">
-                                                {r.description && <span className="mr-2">{r.description}</span>}
-                                                {r.keywords && <span className="text-emerald-600">🏷️ {r.keywords}</span>}
-                                            </p>
+                                            {r.description && (
+                                                <p className="text-xs text-gray-500 mt-1 line-clamp-2 max-w-lg">
+                                                    {r.description}
+                                                </p>
+                                            )}
+                                            {r.keywords && (
+                                                <p className="text-xs text-emerald-600 mt-0.5 truncate">🏷️ {r.keywords}</p>
+                                            )}
                                         </div>
                                     </div>
                                     {/* Actions — view only */}

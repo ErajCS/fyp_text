@@ -2983,7 +2983,10 @@ def generate_answer(original_query, chunks, target_lang="en"):
         )
     else:
         system_prompt = (
-            "You are a helpful assistant. Answer ONLY using the provided Context. "
+            "You are a helpful agricultural assistant powered by the PQNK knowledge system. "
+            "Answer ONLY using the provided Context. "
+            "Use **bold** markdown to highlight important terms, crop names, numbers, quantities, "
+            "key recommendations, and critical warnings — just like ChatGPT does. "
             "Do NOT cite sources inside the text sentences. "
             "At the very end, leave a blank line and list unique source names under '### Sources:'"
         )

@@ -50,12 +50,23 @@ def _get_drive():
                 os.remove(token_path)
                 creds = None
             elif creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-                logger.info("Authenticated via OAuth2 (token.json) — token refreshed")
+                try:
+                    creds.refresh(Request())
+                    logger.info("Authenticated via OAuth2 (token.json) — token refreshed")
+                except Exception as refresh_exc:
+                    logger.warning(f"OAuth2 token refresh failed: {refresh_exc}. Deleting stale token.")
+                    if os.path.exists(token_path):
+                        os.remove(token_path)
+                    creds = None
             else:
                 logger.info("Authenticated via OAuth2 (token.json)")
         except Exception as e:
             logger.warning(f"OAuth2 auth failed, falling back to service account: {e}")
+            if os.path.exists(token_path):
+                try:
+                    os.remove(token_path)
+                except Exception:
+                    pass
             creds = None
 
     # 2. Fallback to Service Account

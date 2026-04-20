@@ -880,6 +880,23 @@ def get_response():
             ai_response = str(rag_result)
             sources     = []
 
+        # ── 5c. Strip inline "### Sources:" text block from response ──────────
+        # The GPT response may contain a "### Sources:" section at the end.
+        # The frontend renders sources separately via the sources panel, so
+        # we strip this section from the text to avoid duplication/confusion.
+        # Also removes the Urdu equivalent "### حوالہ جات:".
+        for src_marker in ("### Sources:", "### Sources\n", "### حوالہ جات:", "### حوالہ جات\n"):
+            if src_marker in ai_response:
+                ai_response = ai_response.split(src_marker)[0].rstrip()
+                break
+
+        # ── 5d. Hide sources if AI couldn't find the answer ─────────────
+        ai_lower = ai_response.lower()
+        if "provided context does not" in ai_lower or \
+           ("sorry" in ai_lower and "context" in ai_lower) or \
+           "میں معذرت خواہ ہوں" in ai_response:
+            sources = []
+
         # ── 5b. Enrich sources with internal file URLs ─────────────────────────
         # RAG returns doc_name which is the .txt file (e.g. "paper_english.txt").
         # Strip language suffix to get the base name, then look up the Resource row.
@@ -1038,8 +1055,69 @@ def normalize_phone(phone: str) -> str:
         phone = "+" + phone
     return phone
 
+# ─── SMS via MSG91 (alternative to Twilio, works well in Pakistan) ────────────
+def send_otp_sms_msg91(to_phone: str, otp_code: str, name: str = "") -> tuple:
+    """Send OTP via MSG91. Returns (True, None) or (False, error_msg).
+    
+    Setup (free at msg91.com):
+      1. Sign up at https://msg91.com/signup
+      2. Go to Dashboard → SMS → Sender IDs → Create Sender ID 
+      3. Go to Dashboard → SMS → Templates → Create OTP Template
+      4. Get your API key from Dashboard → Settings → API Keys
+      5. Add to .env:
+           MSG91_API_KEY=your_api_key
+           MSG91_SENDER_ID=PQNKAG   (6-char sender ID, approved)
+           MSG91_TEMPLATE_ID=your_template_id  (optional, for DLT compliance)
+    """
+    api_key   = os.getenv("MSG91_API_KEY", "").strip()
+    sender_id = os.getenv("MSG91_SENDER_ID", "AGRICH").strip()
+
+    if not api_key or api_key == "your_msg91_api_key_here":
+        return False, "MSG91 not configured"
+
+    formatted = normalize_phone(to_phone)
+    # MSG91 expects the number without the leading '+'
+    to_num = formatted.lstrip("+")
+
+    body = (
+        f"AgriChat PQNK: Hi {name or 'there'}! "
+        f"Your verification code is {otp_code}. "
+        f"Valid for 10 minutes. Do NOT share it."
+    )
+
+    try:
+        import requests as _req
+        url = "https://api.msg91.com/api/v5/otp"
+        payload = {
+            "authkey":   api_key,
+            "mobile":    to_num,
+            "message":   body,
+            "otp":       otp_code,
+            "sender":    sender_id,
+            "otp_expiry": 10,
+        }
+        template_id = os.getenv("MSG91_TEMPLATE_ID", "").strip()
+        if template_id:
+            payload["template_id"] = template_id
+
+        resp = _req.post(url, json=payload, timeout=10)
+        data = resp.json()
+        if data.get("type") == "success" or resp.status_code == 200:
+            print(f"OK MSG91 SMS sent to {formatted}")
+            return True, None
+        else:
+            err = data.get("message", str(resp.text))
+            print(f"ERROR MSG91 error: {err}")
+            return False, err
+    except ImportError:
+        return False, "requests library not installed"
+    except Exception as e:
+        print(f"ERROR MSG91 send error: {e}")
+        return False, str(e)
+
+
 # ─── SMS via Twilio ───────────────────────────────────────────────────────────
-def send_otp_sms(to_phone: str, otp_code: str, name: str = "") -> tuple:
+def send_otp_sms_twilio(to_phone: str, otp_code: str, name: str = "") -> tuple:
     """Send OTP via SMS using Twilio. Returns (True, None) or (False, error_msg)."""
     sid   = os.getenv("TWILIO_ACCOUNT_SID", "").strip()
     token = os.getenv("TWILIO_AUTH_TOKEN", "").strip()
@@ -1051,7 +1129,7 @@ def send_otp_sms(to_phone: str, otp_code: str, name: str = "") -> tuple:
         return False, "SMS not configured"
 
     formatted = normalize_phone(to_phone)
-    print(f"📱 Sending SMS OTP to {formatted}…")
+    print(f"📱 Sending SMS OTP via Twilio to {formatted}…")
 
     try:
         from twilio.rest import Client
@@ -1063,7 +1141,7 @@ def send_otp_sms(to_phone: str, otp_code: str, name: str = "") -> tuple:
             f"This code expires in 10 minutes. Do NOT share it."
         )
         message = client.messages.create(body=body, from_=from_, to=formatted)
-        print(f"OK SMS sent to {formatted} (SID: {message.sid})")
+        print(f"OK Twilio SMS sent to {formatted} (SID: {message.sid})")
         return True, None
     except TwilioRestException as e:
         err = f"Twilio error {e.code}: {e.msg}"
@@ -1074,8 +1152,27 @@ def send_otp_sms(to_phone: str, otp_code: str, name: str = "") -> tuple:
         print(f"ERROR {err}")
         return False, err
     except Exception as e:
-        print(f"ERROR SMS send error: {e}")
+        print(f"ERROR Twilio SMS send error: {e}")
         return False, str(e)
+
+
+def send_otp_sms(to_phone: str, otp_code: str, name: str = "") -> tuple:
+    """
+    Unified SMS dispatcher.
+    Tries MSG91 first (preferred for Pakistan), falls back to Twilio.
+    Returns (True, None) on success, (False, error_msg) on failure.
+    """
+    if not to_phone:
+        return False, "No phone number provided"
+
+    # Try MSG91 first (works great in Pakistan, simple REST API)
+    ok, err = send_otp_sms_msg91(to_phone, otp_code, name)
+    if ok:
+        return True, None
+
+    # Fallback: Twilio
+    ok, err = send_otp_sms_twilio(to_phone, otp_code, name)
+    return ok, err
 
 # ─── Email via Gmail SMTP ─────────────────────────────────────────────────────
 def send_otp_email(to_email: str, otp_code: str, name: str = "") -> tuple:
