@@ -2506,8 +2506,8 @@ else:
 COLLECTION_NAME = "pqnk_v2"
 
 # ⚙️ MODEL SETTINGS
-GENERATION_MODEL = "gpt-4o"
-EMBEDDING_MODEL = "text-embedding-3-small"
+GENERATION_MODEL = "gpt-4o"    #increase to gpt-5 later for post production
+EMBEDDING_MODEL = "text-embedding-3-small"    #increase to text-embedding-3-large 
 
 # 🛡️ RETRIEVAL SAFEGUARDS
 MIN_SCORE_THRESHOLD = 0.25
@@ -2918,21 +2918,68 @@ def retrieve_chunks_hybrid(original_query, top_k=8):
     # 5) Final rerank
     merged_sorted = sorted(merged, key=lambda x: x["score_boosted"], reverse=True)
 
-    final_chunks = merged_sorted[:top_k]
+    # 5) Cross-Encoder re-ranking: pass all candidates, it selects top_k
+    # Falls back to bi-encoder ranking if the model is unavailable.
+    return rerank_with_cross_encoder(original_query, merged_sorted, top_k)
 
-    # --- FINAL DEBUG PRINT ---
-    print(f"\nOK FINAL HYBRID Top-{len(final_chunks)} Chunks Passed to GPT-4o:")
-    if not final_chunks:
-        print("   ERROR No chunks met the threshold.")
-    else:
-        for i, chunk in enumerate(final_chunks):
+
+# ============ CROSS-ENCODER RE-RANKING ============
+
+_cross_encoder = None  # Lazy-loaded to avoid slow startup
+
+def _get_cross_encoder():
+    """Lazy-load the CrossEncoder model on first use."""
+    global _cross_encoder
+    if _cross_encoder is None:
+        try:
+            from sentence_transformers import CrossEncoder
+            _cross_encoder = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
+            print("OK: CrossEncoder re-ranker loaded")
+        except Exception as e:
+            print(f"WARNING: CrossEncoder unavailable — falling back to bi-encoder scores: {e}")
+            _cross_encoder = False  # Mark as unavailable so we don't retry
+    return _cross_encoder
+
+
+def rerank_with_cross_encoder(query, chunks, top_k):
+    """
+    Re-rank `chunks` using a CrossEncoder model that jointly scores (query, document) pairs.
+    This is significantly more accurate than the bi-encoder cosine similarity alone.
+    Falls back gracefully to bi-encoder score if the model is unavailable.
+
+    Strategy:
+      1. Retrieve a larger candidate pool (all merged chunks, not cut at top_k yet)
+      2. CrossEncoder scores each (query, chunk) pair
+      3. Sort by cross-encoder score, take top_k
+    """
+    ce = _get_cross_encoder()
+
+    if not ce:
+        # Fallback: just return the already-sorted top_k
+        return chunks[:top_k]
+
+    try:
+        pairs = [[query, c["text"]] for c in chunks]
+        scores = ce.predict(pairs)
+
+        for i, chunk in enumerate(chunks):
+            chunk["rerank_score"] = float(scores[i])
+
+        reranked = sorted(chunks, key=lambda x: x.get("rerank_score", x["score"]), reverse=True)
+
+        # Debug output
+        print(f"\nOK CROSS-ENCODER Re-ranked Top-{min(top_k, len(reranked))} Chunks:")
+        for i, chunk in enumerate(reranked[:top_k]):
             doc = chunk["payload"].get("doc_name", "Unknown")
-            lang = chunk["payload"].get("language", "unknown")
-            print(f"   {i+1}. [Score: {chunk['score_boosted']:.4f}] {doc} [{lang}]")
+            lang = chunk["payload"].get("language", "?")
+            print(f"   {i+1}. [CE Score: {chunk.get('rerank_score', 0):.4f}] {doc} [{lang}]")
             print(f"      Preview: \"{chunk['text'][:80].replace(chr(10), ' ')}...\"")
-    print("=" * 60 + "\n")
+        print("=" * 60 + "\n")
 
-    return final_chunks
+        return reranked[:top_k]
+    except Exception as e:
+        print(f"WARNING: CrossEncoder re-ranking failed, using bi-encoder ranking: {e}")
+        return chunks[:top_k]
 
 
 # ============ MULTI-HOP (UNCHANGED, BUT USE HYBRID) ============

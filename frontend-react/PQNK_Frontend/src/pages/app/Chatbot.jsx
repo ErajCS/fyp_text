@@ -238,15 +238,16 @@ function MarkdownMessage({ content }) {
     }
     if (/^\d+\.\s/.test(trimmed)) {
       flushList();
-      const text = trimmed.replace(/^\d+\.\s/, "");
-      const numItems = [text];
+      const numMatch = trimmed.match(/^(\d+)\.\s(.*)/);
+      const numItems = [{ num: numMatch[1], text: numMatch[2] }];
       // Look ahead — skip blank lines between numbered items (GPT often inserts them)
       let peek = i + 1;
       while (peek < lines.length) {
         const peekLine = lines[peek].trim();
         if (peekLine === "") { peek++; continue; }  // skip blank separator
         if (/^\d+\.\s/.test(peekLine)) {
-          numItems.push(peekLine.replace(/^\d+\.\s/, ""));
+          const m = peekLine.match(/^(\d+)\.\s(.*)/);
+          numItems.push({ num: m[1], text: m[2] });
           i = peek;
           peek++;
         } else { break; }
@@ -254,9 +255,9 @@ function MarkdownMessage({ content }) {
       rendered.push(
         <ol key={`ol-${i}`} className="space-y-1 my-1.5 pl-1">
           {numItems.map((item, j) => (
-            <li key={j} className="flex gap-2 items-start">
-              <span className="text-emerald-400 font-semibold text-xs mt-0.5 flex-shrink-0">{j + 1}.</span>
-              <span>{renderInline(item)}</span>
+            <li key={`li-${j}-${item.num}`} className="flex gap-2 items-start">
+              <span className="text-emerald-400 font-semibold text-xs mt-0.5 flex-shrink-0">{item.num}.</span>
+              <span>{renderInline(item.text)}</span>
             </li>
           ))}
         </ol>
@@ -296,9 +297,9 @@ function MessageBubble({ msg, index, copiedId, onCopy, isStreaming }) {
 
       <div className={`flex flex-col max-w-[75%] ${isUser ? "items-end" : "items-start"}`}>
         <div
-          className={`relative px-5 py-3 rounded-2xl shadow-lg leading-relaxed text-sm ${isUser
-            ? "bg-gradient-to-br from-amber-400 to-yellow-500 text-white rounded-br-none"
-            : "bg-white/15 backdrop-blur-md text-white border border-white/15 rounded-bl-none"
+          className={`relative px-5 py-3 rounded-2xl shadow-2xl leading-relaxed text-sm backdrop-blur-xl border ${isUser
+            ? "bg-black/30 border-white/20 text-white rounded-br-none"
+            : "bg-black/40 border-white/10 text-white rounded-bl-none"
             }`}
         >
           {isUser ? (
@@ -503,9 +504,17 @@ export default function Chatbot() {
   // ── Delete conversation ───────────────────────────────────────────────────
   const deleteConversation = async (e, convId) => {
     e.stopPropagation();
-    await fetch(`/api/chat/${convId}`, { method: "DELETE", credentials: "include" });
-    if (activeConvId === convId) { setActiveConvId(null); setMessages([WELCOME_MSG]); }
-    fetchHistory();
+    try {
+      const res = await fetch(`/api/chat/${convId}`, { method: "DELETE", credentials: "include" });
+      if (!res.ok) {
+        console.error(`Delete failed: HTTP ${res.status}`);
+        return; // Don't refresh if server rejected the request
+      }
+      if (activeConvId === convId) { setActiveConvId(null); setMessages([WELCOME_MSG]); }
+      fetchHistory();
+    } catch (err) {
+      console.error("Delete conversation network error:", err);
+    }
   };
 
   // ── Send message with streaming ────────────────────────────────────────────
@@ -700,8 +709,7 @@ export default function Chatbot() {
                         }`}
                     >
                       <div className="flex justify-between items-start">
-                        <span className="text-white/80 text-xs font-medium truncate pr-2">{conv.title}</span>
-                        <span className="text-white/30 text-[10px] flex-shrink-0">{formatRelative(conv.updated_at)}</span>
+                        <span className="text-white/80 text-xs font-medium truncate">{conv.title}</span>
                       </div>
                     </button>
                     {/* Delete button */}
