@@ -290,7 +290,7 @@ tailwindcss, autoprefixer, postcss (dev)
 ## Project Structure
 
 ```
-fyp_text/
+fyp_pqnk/
 ├── agri_ui/               ← Flask backend
 │   ├── app.py             ← Main server (routes, auth, repository, chat)
 │   ├── rag_demo.py        ← RAG pipeline (retrieval + GPT generation)
