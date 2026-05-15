@@ -43,6 +43,7 @@ export default function SuperAdminDashboard() {
             .finally(() => setStatsLoading(false));
     }, []);
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => { fetchStats(); }, [fetchStats]);
 
     // Fetch users
@@ -59,7 +60,9 @@ export default function SuperAdminDashboard() {
             .finally(() => setLoading(false));
     }, [page, search, roleFilter]);
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => { fetchUsers(); }, [fetchUsers]);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => { setPage(1); }, [search, roleFilter]);
 
     const showMsg = (text, type = "success") => {

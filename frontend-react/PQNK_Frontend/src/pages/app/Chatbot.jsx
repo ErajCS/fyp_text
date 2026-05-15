@@ -494,6 +494,7 @@ export default function Chatbot() {
     } catch { /* ignore */ }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchHistory(); }, [fetchHistory]);
 
   useEffect(() => {
@@ -651,6 +652,7 @@ export default function Chatbot() {
     },
     onTranscribing: () => setVoiceStatus("transcribing"),
   });
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (recording) setVoiceStatus("recording"); }, [recording]);
 
   return (

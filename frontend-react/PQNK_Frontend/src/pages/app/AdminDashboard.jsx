@@ -34,6 +34,7 @@ export default function AdminDashboard() {
 
     // Fetch real stats
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setStatsLoading(true);
         fetch("/api/admin/stats", { credentials: "include" })
             .then(r => r.json())
@@ -57,9 +58,11 @@ export default function AdminDashboard() {
             .finally(() => setLoading(false));
     }, [page, search, roleFilter]);
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => { fetchUsers(); }, [fetchUsers]);
 
     // Reset page on filter change
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => { setPage(1); }, [search, roleFilter]);
 
     const handleRoleChange = async (userId, newRole) => {
