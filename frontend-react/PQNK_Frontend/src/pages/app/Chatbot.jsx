@@ -151,10 +151,22 @@ function AudioButton({ text }) {
       });
       const data = await res.json();
       if (data.audio_url) {
-        const audio = new Audio(data.audio_url);
+        // Fetch the audio as a blob to bypass Ngrok's browser warning screen
+        const audioRes = await fetch(data.audio_url, {
+          headers: {
+            "ngrok-skip-browser-warning": "true"
+          }
+        });
+        const blob = await audioRes.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        
+        const audio = new Audio(blobUrl);
         setPlaying(true);
         audio.play().catch(console.error);
-        audio.onended = () => setPlaying(false);
+        audio.onended = () => {
+          setPlaying(false);
+          URL.revokeObjectURL(blobUrl); // Cleanup memory
+        };
       }
     } catch (err) { console.error("Audio error:", err); }
     finally { setLoading(false); }
