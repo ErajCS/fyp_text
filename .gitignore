@@ -69,6 +69,8 @@ package-lock.json
 test_video/ffmpeg*
 pipeline_workspace/
 
+
+# ── Project Documents ─────────────────────────────────────────────────────────
 about-project/
 about-project/pqnk_research_paper.tex
 about-project/CI_CD.md
@@ -78,6 +80,6 @@ about-project/progress_report.md
 about-project/AUTOMATION_PIPELINE.md
 literature_review/
 videos_texts/
-
+static/audio/
 
 report/
