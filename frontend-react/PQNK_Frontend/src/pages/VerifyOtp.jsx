@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useLanguage, TRANSLATIONS } from "../context/LanguageContext";
 
 export default function VerifyOtp() {
     const navigate = useNavigate();
@@ -13,6 +14,9 @@ export default function VerifyOtp() {
     const [success, setSuccess] = useState("");
     const [countdown, setCountdown] = useState(60);
     const inputRefs = useRef([]);
+    
+    const { lang, toggleLang } = useLanguage();
+    const t = TRANSLATIONS[lang];
 
     // Countdown timer to enable resend button
     useEffect(() => {
@@ -153,12 +157,12 @@ export default function VerifyOtp() {
                             <div className="w-14 h-14 rounded-full bg-emerald-50 border-2 border-emerald-200 flex items-center justify-center text-2xl mx-auto mb-4">
                                 📧
                             </div>
-                            <h2 className="text-2xl font-bold text-gray-800 mb-2">Verify Your Email</h2>
+                            <h2 className="text-2xl font-bold text-gray-800 mb-2">{t.authVerifyTitle}</h2>
                             <p className="text-gray-500 text-sm leading-relaxed">
-                                We sent a 6-digit verification code to
+                                {t.authVerifyDesc1}
                             </p>
                             <p className="text-emerald-700 font-semibold text-sm mt-1 break-all">{email}</p>
-                            <p className="text-gray-400 text-xs mt-2">Check your inbox (and spam folder)</p>
+                            <p className="text-gray-400 text-xs mt-2">{t.authVerifyDesc2}</p>
                         </div>
 
                         {/* Success message */}
@@ -201,15 +205,15 @@ export default function VerifyOtp() {
                                 : "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 hover:shadow-green-500/30 hover:scale-[1.01]"
                                 }`}
                         >
-                            {loading ? "Verifying…" : "Verify Email"}
+                            {loading ? t.authVerifying : t.authVerifyBtn}
                         </button>
 
                         {/* Resend */}
                         <div className="text-center">
-                            <p className="text-gray-500 text-sm mb-2">Didn't receive the code?</p>
+                            <p className="text-gray-500 text-sm mb-2">{t.authDidntReceive}</p>
                             {countdown > 0 ? (
                                 <p className="text-gray-400 text-sm">
-                                    Resend in <span className="font-semibold text-emerald-600">{countdown}s</span>
+                                    {lang === "ur" ? "دوبارہ بھیجنے میں" : "Resend in"} <span className="font-semibold text-emerald-600">{countdown}s</span>
                                 </p>
                             ) : (
                                 <button
@@ -217,15 +221,23 @@ export default function VerifyOtp() {
                                     disabled={resending}
                                     className="text-emerald-600 font-semibold text-sm hover:text-emerald-700 transition disabled:opacity-50"
                                 >
-                                    {resending ? "Sending…" : "Resend OTP"}
+                                    {resending ? t.authResending : t.authResendBtn}
                                 </button>
                             )}
                         </div>
 
                         {/* Back to signup */}
-                        <div className="border-t border-gray-100 mt-6 pt-5 text-center">
-                            <Link to="/signup" className="text-xs text-gray-400 hover:text-gray-600 transition">
-                                ← Back to Sign Up
+                        <div className="border-t border-gray-100 mt-6 pt-5 flex flex-col gap-3 text-center">
+                            {/* Urdu toggle */}
+                            <button 
+                                onClick={toggleLang}
+                                className="w-full py-2 rounded-xl text-gray-500 text-xs font-medium hover:bg-gray-50 transition flex items-center justify-center gap-2"
+                            >
+                                🌐 {lang === "en" ? "Switch to Urdu (اردو)" : "Switch to English"}
+                            </button>
+                            
+                            <Link to="/login" className="text-xs text-gray-400 hover:text-gray-600 transition">
+                                ← {t.authBackToLogin}
                             </Link>
                         </div>
                     </div>

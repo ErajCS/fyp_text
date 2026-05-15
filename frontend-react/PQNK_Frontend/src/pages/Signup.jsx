@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useLanguage, TRANSLATIONS } from "../context/LanguageContext";
 
 export default function Signup() {
     const navigate = useNavigate();
@@ -16,6 +17,9 @@ export default function Signup() {
     const [agreed, setAgreed] = useState(false);
     const [error, setError] = useState("");
     const [showPwHint, setShowPwHint] = useState(false);
+    
+    const { lang, toggleLang } = useLanguage();
+    const t = TRANSLATIONS[lang];
 
     const pwRules = [
         { test: (pw) => pw.length >= 8, label: "At least 8 characters" },
@@ -175,8 +179,8 @@ export default function Signup() {
                                 <h2 className="text-lg font-bold text-green-800">AgriChat</h2>
                             </div>
 
-                            <h3 className="text-2xl font-bold text-gray-800 mb-1">Create Account</h3>
-                            <p className="text-gray-500 text-sm mb-6">Join the AgriChat community today</p>
+                            <h3 className="text-2xl font-bold text-gray-800 mb-1">{t.authCreateTitle}</h3>
+                            <p className="text-gray-500 text-sm mb-6">{t.authCreateDesc}</p>
 
                             {/* Error banner */}
                             {error && (
@@ -189,22 +193,22 @@ export default function Signup() {
                             <form onSubmit={handleSubmit} className="space-y-4">
                                 {/* Full Name */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t.authFullName}</label>
                                     <input
                                         type="text" name="name" value={formData.name}
                                         onChange={handleChange} required
-                                        placeholder="Muhammad Wajeeh"
+                                        placeholder={t.authFullNamePlace}
                                         className="w-full px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-400 text-sm transition"
                                     />
                                 </div>
 
                                 {/* Email */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t.authEmailLabel}</label>
                                     <input
                                         type="email" name="email" value={formData.email}
                                         onChange={handleChange} required
-                                        placeholder="you@example.com"
+                                        placeholder={t.authEmailPlaceholder}
                                         className="w-full px-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-400 text-sm transition"
                                     />
                                 </div>
@@ -212,7 +216,7 @@ export default function Signup() {
                                 {/* Phone */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                                        Phone Number <span className="text-gray-400 font-normal">(optional)</span>
+                                        {t.authPhoneLabel} <span className="text-gray-400 font-normal">(optional)</span>
                                     </label>
                                     <input
                                         type="tel" name="phone" value={formData.phone}
@@ -224,7 +228,7 @@ export default function Signup() {
 
                                 {/* Password */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t.authPasswordLabel}</label>
                                     <div className="relative">
                                         <input
                                             type={showPassword ? "text" : "password"} name="password"
@@ -261,7 +265,7 @@ export default function Signup() {
 
                                 {/* Confirm Password */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Confirm Password</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t.authConfirmPassword}</label>
                                     <div className="relative">
                                         <input
                                             type={showConfirm ? "text" : "password"} name="confirmPassword"
@@ -284,7 +288,7 @@ export default function Signup() {
                                         className="w-4 h-4 mt-0.5 rounded border-gray-300 text-green-600 focus:ring-green-500"
                                     />
                                     <label htmlFor="terms" className="text-xs text-gray-500 leading-relaxed">
-                                        I agree to the <span className="text-green-600 font-medium cursor-pointer">Terms of Service</span> and <span className="text-green-600 font-medium cursor-pointer">Privacy Policy</span>
+                                        {t.authAgreeTerms1} <span className="text-green-600 font-medium cursor-pointer">{t.authAgreeTerms2}</span> {t.authAgreeTerms3} <span className="text-green-600 font-medium cursor-pointer">{t.authAgreeTerms4}</span>
                                     </label>
                                 </div>
 
@@ -296,15 +300,23 @@ export default function Signup() {
                                         : "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 hover:shadow-green-500/30 hover:scale-[1.01]"
                                         }`}
                                 >
-                                    {loading ? "Creating Account…" : "Create Account"}
+                                    {loading ? t.authSigningUp : t.authSignUpBtn}
                                 </button>
                             </form>
+                            
+                            {/* Urdu toggle */}
+                            <button 
+                                onClick={toggleLang}
+                                className="w-full mt-5 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition flex items-center justify-center gap-2"
+                            >
+                                🌐 {lang === "en" ? "Switch to Urdu (اردو)" : "Switch to English"}
+                            </button>
 
                             {/* Login link */}
                             <p className="text-center text-sm text-gray-500 mt-6">
-                                Already have an account?{" "}
+                                {t.authHaveAccount}{" "}
                                 <Link to="/login" className="text-green-600 font-semibold hover:text-green-700 transition">
-                                    Sign In
+                                    {t.authLoginLink}
                                 </Link>
                             </p>
                         </div>

@@ -25,9 +25,28 @@ export default function ContactUs() {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSubmitting(true);
-        await new Promise((r) => setTimeout(r, 1200));
-        setSubmitting(false);
-        setSubmitted(true);
+        try {
+            const res = await fetch("/api/contact", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: `${form.firstName} ${form.lastName}`.trim(),
+                    email: form.email,
+                    message: `Subject: ${form.subject}\nPhone: ${form.phone}\n\n${form.message}`
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                setSubmitted(true);
+            } else {
+                alert(data.message || "Failed to send message. Please try again.");
+            }
+        } catch (error) {
+            console.error("Error sending contact form:", error);
+            alert("Network error. Please try again.");
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     if (submitted) {

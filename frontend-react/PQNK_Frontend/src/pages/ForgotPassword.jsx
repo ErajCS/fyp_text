@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useLanguage, TRANSLATIONS } from "../context/LanguageContext";
 
 export default function ForgotPassword() {
     const navigate = useNavigate();
@@ -11,6 +12,9 @@ export default function ForgotPassword() {
     const [loading, setLoading] = useState(false);
     const [msg, setMsg] = useState({ text: "", type: "" });
     const [showPwHint, setShowPwHint] = useState(false);
+    
+    const { lang, toggleLang } = useLanguage();
+    const t = TRANSLATIONS[lang];
 
     const pwRules = [
         { test: (pw) => pw.length >= 8, label: "At least 8 characters" },
@@ -83,12 +87,12 @@ export default function ForgotPassword() {
                             <span className="text-2xl">🔑</span>
                         </div>
                         <h1 className="text-2xl font-bold text-white mb-1">
-                            {step === "email" ? "Forgot Password?" : "Reset Password"}
+                            {step === "email" ? t.authResetTitle : t.authVerifyResetTitle}
                         </h1>
                         <p className="text-white/50 text-sm">
                             {step === "email"
-                                ? "Enter your email to receive a reset code."
-                                : `Enter the reset code sent to ${email} and your new password.`}
+                                ? t.authResetDesc
+                                : t.authVerifyResetDesc}
                         </p>
                     </div>
 
@@ -106,12 +110,12 @@ export default function ForgotPassword() {
                     {step === "email" && (
                         <form onSubmit={sendOtp} className="space-y-4">
                             <div>
-                                <label className="block text-sm text-white/60 mb-1.5 font-medium">Email Address</label>
+                                <label className="block text-sm text-white/60 mb-1.5 font-medium">{t.authEmailLabel}</label>
                                 <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="you@example.com" required className={inputCls} />
+                                    placeholder={t.authEmailPlaceholder} required className={inputCls} />
                             </div>
                             <button type="submit" disabled={loading} className={btnCls}>
-                                {loading ? "Sending…" : "Send Reset Code"}
+                                {loading ? t.authSendingCode : t.authSendCodeBtn}
                             </button>
                         </form>
                     )}
@@ -120,12 +124,12 @@ export default function ForgotPassword() {
                     {step === "otp" && (
                         <form onSubmit={resetPassword} className="space-y-4">
                             <div>
-                                <label className="block text-sm text-white/60 mb-1.5 font-medium">6-Digit Reset Code</label>
+                                <label className="block text-sm text-white/60 mb-1.5 font-medium">{t.authCodeLabel}</label>
                                 <input type="text" value={otp} onChange={(e) => setOtp(e.target.value)}
                                     placeholder="123456" maxLength={6} required className={inputCls} />
                             </div>
                             <div>
-                                <label className="block text-sm text-white/60 mb-1.5 font-medium">New Password</label>
+                                <label className="block text-sm text-white/60 mb-1.5 font-medium">{t.authResetNewPass}</label>
                                 <input type="password" value={newPw}
                                     onChange={(e) => setNewPw(e.target.value)}
                                     onFocus={() => setShowPwHint(true)}
@@ -146,12 +150,12 @@ export default function ForgotPassword() {
                                 )}
                             </div>
                             <div>
-                                <label className="block text-sm text-white/60 mb-1.5 font-medium">Confirm New Password</label>
+                                <label className="block text-sm text-white/60 mb-1.5 font-medium">{t.authConfirmPassword}</label>
                                 <input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)}
                                     placeholder="••••••••" required className={inputCls} />
                             </div>
                             <button type="submit" disabled={loading} className={btnCls}>
-                                {loading ? "Resetting…" : "Reset Password"}
+                                {loading ? t.authResetting : t.authResetBtn}
                             </button>
                             <button type="button" onClick={() => setStep("email")}
                                 className="w-full py-2 text-white/50 hover:text-white text-sm transition">
@@ -160,12 +164,22 @@ export default function ForgotPassword() {
                         </form>
                     )}
 
-                    <p className="text-center text-sm text-white/40 mt-5">
-                        Remembered it?{" "}
-                        <Link to="/login" className="text-emerald-400 hover:text-emerald-300 font-medium transition">
-                            Back to Login
-                        </Link>
-                    </p>
+                    <div className="flex flex-col items-center gap-3 mt-6 pt-5 border-t border-white/10">
+                        {/* Urdu toggle */}
+                        <button 
+                            onClick={toggleLang}
+                            className="w-full py-2 rounded-xl text-white/50 text-xs font-medium hover:bg-white/5 transition flex items-center justify-center gap-2"
+                        >
+                            🌐 {lang === "en" ? "Switch to Urdu (اردو)" : "Switch to English"}
+                        </button>
+                        
+                        <p className="text-center text-sm text-white/40">
+                            {t.authBackToLogin.replace("Back to Login", "Remembered it? ")}
+                            <Link to="/login" className="text-emerald-400 hover:text-emerald-300 font-medium transition ml-1">
+                                {t.authBackToLogin}
+                            </Link>
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>

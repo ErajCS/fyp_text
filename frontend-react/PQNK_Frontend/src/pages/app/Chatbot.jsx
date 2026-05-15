@@ -369,24 +369,38 @@ function useWhisperInput({ onResult, onError, onTranscribing, lang = "en" }) {
   const [transcribing, setTranscribing] = useState(false);
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
+  // langRef always holds the latest value — avoids stale closure when lang switches mid-session
+  const langRef = useRef(lang);
+  useEffect(() => { langRef.current = lang; }, [lang]);
 
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mr = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      // Pick the best supported MIME type — Safari doesn't support audio/webm
+      const mimeType = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/ogg;codecs=opus",
+        "audio/mp4",
+      ].find((m) => MediaRecorder.isTypeSupported(m)) || "";
+      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : {});
       chunksRef.current = [];
       mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       mr.onstop = async () => {
         stream.getTracks().forEach((t) => t.stop());
-        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        const actualMime = mr.mimeType || "audio/webm";
+        const blob = new Blob(chunksRef.current, { type: actualMime });
         setTranscribing(true);
         onTranscribing?.();
         try {
           const formData = new FormData();
-          formData.append("audio", blob, "audio.webm");
-          // Send language hint so Whisper transcribes in the correct language
-          // 'ur' for Urdu to prevent accidental Hindi output
-          formData.append("language", lang === "ur" ? "ur" : "en");
+          // File extension must match actual MIME so Whisper accepts it
+          const ext = actualMime.includes("mp4") ? "mp4"
+            : actualMime.includes("ogg") ? "ogg" : "webm";
+          formData.append("audio", blob, `audio.${ext}`);
+          // Do NOT force a language — let Whisper auto-detect the spoken language.
+          // Forcing 'en' when the user speaks Urdu causes the transcript to come
+          // out in English. Auto-detect correctly outputs Urdu script for Urdu speech.
           const res = await fetch("/api/transcribe", {
             method: "POST",
             credentials: "include",
@@ -407,7 +421,7 @@ function useWhisperInput({ onResult, onError, onTranscribing, lang = "en" }) {
     } catch (e) {
       onError("Microphone access denied. Please allow microphone permissions.");
     }
-  }, [onResult, onError, onTranscribing]);
+  }, [onResult, onError, onTranscribing]); // lang always read via langRef — no re-creation needed
 
   const stopRecording = useCallback(() => {
     mediaRecorderRef.current?.stop();
@@ -452,6 +466,10 @@ export default function Chatbot() {
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const { copiedId, copy } = useCopyToClipboard();
+  // Stores the language detected from the most recent voice transcript.
+  // This overrides the UI lang toggle so Urdu voice always gets an Urdu answer,
+  // even when the UI is set to English. Reset to null after each message send.
+  const voiceLangRef = useRef(null);
 
   const charLimit = 500;
   const hasUserMessages = messages.some((m) => m.role === "user");
@@ -542,9 +560,13 @@ export default function Chatbot() {
         body: JSON.stringify({
           msg: content,
           conversation_id: activeConvId,
-          ui_lang: lang,   // tell backend which language the UI is set to
+          // Use voice-detected language if available (e.g. user spoke Urdu while UI is in English).
+          // Fall back to the UI language toggle.
+          ui_lang: voiceLangRef.current || lang,
         }),
       });
+      // Clear voice lang override — it only applies to the one message it came from
+      voiceLangRef.current = null;
 
       if (!res.ok) throw new Error("Status " + res.status);
       const data = await res.json();
@@ -600,8 +622,13 @@ export default function Chatbot() {
   // ── Whisper voice input ───────────────────────────────────────────────────
   const [voiceStatus, setVoiceStatus] = useState(""); // "recording" | "transcribing" | ""
   const { recording, transcribing, toggle: toggleMic } = useWhisperInput({
-    lang,   // 'ur' or 'en' — sent to Whisper backend to force correct transcription language
+    lang,
     onResult: (text) => {
+      // Detect if the transcript is in Urdu script (Arabic Unicode block U+0600–U+06FF).
+      // If yes, store 'ur' so the next message send uses it as ui_lang, ensuring
+      // the backend responds in Urdu regardless of the UI language toggle.
+      const hasUrduScript = /[\u0600-\u06FF]/.test(text);
+      voiceLangRef.current = hasUrduScript ? "ur" : null;
       setInput((prev) => (prev ? prev + " " + text : text));
       setVoiceStatus("");
       setTimeout(() => inputRef.current?.focus(), 50);

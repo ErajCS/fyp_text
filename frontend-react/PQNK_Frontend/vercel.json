@@ -1,0 +1,24 @@
+{
+    "rewrites": [
+        {
+            "source": "/api/(.*)",
+            "destination": "https://dealt-baton-oversized.ngrok-free.dev/api/$1"
+        },
+        {
+            "source": "/get_response",
+            "destination": "https://dealt-baton-oversized.ngrok-free.dev/get_response"
+        },
+        {
+            "source": "/generate_audio",
+            "destination": "https://dealt-baton-oversized.ngrok-free.dev/generate_audio"
+        },
+        {
+            "source": "/static/(.*)",
+            "destination": "https://dealt-baton-oversized.ngrok-free.dev/static/$1"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "/index.html"
+        }
+    ]
+}

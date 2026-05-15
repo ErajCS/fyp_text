@@ -564,6 +564,7 @@ class ChatMessage(db.Model):
     conversation_id = db.Column(db.Integer, db.ForeignKey('conversations.id'), nullable=False)
     role            = db.Column(db.String(10), nullable=False)   # 'user' or 'assistant'
     content         = db.Column(db.Text, nullable=False)
+    sources         = db.Column(db.JSON, nullable=True)          # List of sources (doc names/links)
     timestamp       = db.Column(db.DateTime, default=datetime.utcnow)
 
 
@@ -749,7 +750,8 @@ def api_chat_messages(conv_id):
     conv = Conversation.query.filter_by(id=conv_id, user_id=current_user.id).first_or_404()
     return jsonify([
         {"role": m.role, "content": m.content,
-         "timestamp": m.timestamp.isoformat()}
+         "timestamp": m.timestamp.isoformat(),
+         "sources": m.sources or []}
         for m in conv.messages
     ])
 
@@ -784,33 +786,41 @@ def api_chat_rename(conv_id):
 @login_required
 def api_transcribe():
     """Transcribe audio using OpenAI Whisper. Accepts multipart/form-data with fields:
-       - 'audio': the audio file
-       - 'language': ISO-639-1 code hint ('en' or 'ur') to force correct language
+       - 'audio': the audio file (webm, mp4, ogg, wav all accepted)
+       - 'language': optional ISO-639-1 hint ('en' or 'ur').
+         When omitted, Whisper auto-detects the spoken language and outputs
+         text in its native script (Urdu speech → Urdu script, English → English).
     """
     from openai import OpenAI as _OAI
     audio_file = request.files.get("audio")
     if not audio_file:
         return jsonify({"error": "No audio file provided"}), 400
-    # Language hint from frontend: 'ur' for Urdu, 'en' for English
+    # Language hint is optional — the frontend only sends it for explicit overrides.
+    # When absent, Whisper auto-detects correctly (Urdu speech → Urdu script output).
     lang_hint = request.form.get("language", "").strip().lower()
     whisper_lang = lang_hint if lang_hint in ("en", "ur") else None
     try:
         client = _OAI(api_key=os.environ.get("OPENAI_API_KEY", ""))
+        # Use the actual filename sent by the browser (audio.webm / audio.mp4 / audio.ogg)
+        # so Whisper's file-type detection works correctly for cross-browser recordings
+        actual_filename = audio_file.filename or "audio.webm"
+        actual_mime = audio_file.mimetype or "audio/webm"
         kwargs = dict(
             model="whisper-1",
-            file=("audio.webm", audio_file.stream, audio_file.mimetype or "audio/webm"),
+            file=(actual_filename, audio_file.stream, actual_mime),
         )
         if whisper_lang:
             kwargs["language"] = whisper_lang   # forces Whisper to decode in this language
             if whisper_lang == "ur":
                 # Guide Whisper to output Urdu script (Nastaliq/Arabic script) and not Roman Urdu
-                kwargs["prompt"] = "یہ ایک زراعتی سوال ہے۔ براہ کرم اردو رسم الخط میں جواب دیں۔"
+                kwargs["prompt"] = "یہ ایک زراعتی سوال ہے۔ براہ کرم اردو رسم الخط میں لکھیں۔"
 
         transcript = client.audio.transcriptions.create(**kwargs)
         return jsonify({"transcript": transcript.text})
     except Exception as e:
         print(f"ERROR Whisper transcription failed: {e}")
         return jsonify({"error": str(e)}), 500
+
 
 
 # =======================
@@ -890,11 +900,40 @@ def get_response():
                 ai_response = ai_response.split(src_marker)[0].rstrip()
                 break
 
-        # ── 5d. Hide sources if AI couldn't find the answer ─────────────
+        # ── 5d. Hide sources if AI couldn't find the answer ─────────────────
+        # Check for common failure phrases in both English and Urdu.
+        # Sources should only appear when the bot actually answers from the context.
         ai_lower = ai_response.lower()
-        if "provided context does not" in ai_lower or \
-           ("sorry" in ai_lower and "context" in ai_lower) or \
-           "میں معذرت خواہ ہوں" in ai_response:
+        NO_ANSWER_SIGNALS_EN = (
+            "provided context does not",
+            "context does not contain",
+            "context does not mention",
+            "context does not specifically",
+            "context does not include",
+            "not mentioned in the",
+            "not available in the",
+            "no information",
+            "i don't have information",
+            "i do not have information",
+            "i cannot find",
+            "i was unable to find",
+            "unable to answer",
+            "not found in the context",
+            "information not available",
+            "does not specifically mention",  # catches the exact screenshot phrase
+        )
+        NO_ANSWER_SIGNALS_UR = (
+            "معلومات دستیاب نہیں",
+            "سیاق و سباق میں",
+            "میں معذرت خواہ ہوں",
+            "فراہم کردہ",
+            "کوئی معلومات موجود نہیں",
+        )
+        is_failure = (
+            any(sig in ai_lower for sig in NO_ANSWER_SIGNALS_EN) or
+            any(sig in ai_response for sig in NO_ANSWER_SIGNALS_UR)
+        )
+        if is_failure:
             sources = []
 
         # ── 5b. Enrich sources with internal file URLs ─────────────────────────
@@ -929,6 +968,11 @@ def get_response():
                     # Tag the source type so the frontend can show the right icon
                     enriched["source_type"] = resource.file_type   # document / image / video
 
+                    # ✅ Replace the .txt pipeline artifact name with the real uploaded filename
+                    # Preference: original_name (as uploaded) → filename (stored on disk) → stripped base
+                    real_name = resource.original_name or resource.filename or base
+                    enriched["name"] = real_name
+
                     # Build the best available URL
                     if resource.file_type == "video":
                         # Prefer the dedicated video link (YouTube / direct URL)
@@ -959,10 +1003,16 @@ def get_response():
             return src
 
         sources = [_enrich_source(s) for s in sources]
+        # ✅ Only keep sources that have a real clickable HTTP link.
+        # Sources without a link (no Drive URL, no local file) are hidden — not shown as plain text.
+        sources = [
+            s for s in sources
+            if (s.get("file_url") or s.get("link") or "").startswith("http")
+        ]
 
         # ── 6. Save AI reply & update conversation timestamp ──────────────────
         ai_msg_obj = ChatMessage(
-            conversation_id=conv.id, role="assistant", content=ai_response)
+            conversation_id=conv.id, role="assistant", content=ai_response, sources=sources)
         db.session.add(ai_msg_obj)
         conv.updated_at = datetime.utcnow()
         db.session.commit()
@@ -1226,6 +1276,33 @@ def send_otp_email(to_email: str, otp_code: str, name: str = "") -> tuple:
         return False, msg_txt
     except Exception as e:
         print(f"\nERROR Email send error: {e}\n🔑 Fallback OTP: {otp_code}\n")
+        return False, str(e)
+
+def send_admin_notification(subject: str, html_content: str) -> tuple:
+    """Send a notification email to the admin."""
+    mail_user = os.getenv("MAIL_USERNAME", "").strip()
+    mail_pass = os.getenv("MAIL_PASSWORD", "").strip()
+    mail_name = os.getenv("MAIL_FROM_NAME", "AgriChat PQNK").strip()
+    admin_email = "wejito10@gmail.com"
+
+    if not mail_user or not mail_pass or len(mail_pass) < 10:
+        print(f"Skipping admin email notification (SMTP not configured): {subject}")
+        return False, "SMTP not configured"
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"]    = f"{mail_name} <{mail_user}>"
+        msg["To"]      = admin_email
+        msg.attach(MIMEText(html_content, "html"))
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(mail_user, mail_pass)
+            server.sendmail(mail_user, admin_email, msg.as_string())
+        print(f"OK Admin notification sent to {admin_email}")
+        return True, None
+    except Exception as e:
+        print(f"ERROR Admin notification failed: {e}")
         return False, str(e)
 
 # ─── Combined dispatcher (parallel threads) ───────────────────────────────────
@@ -1558,6 +1635,18 @@ def api_user_update():
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "message": f"Database error: {str(e)}"}), 500
+
+    html_body = f"""
+    <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;background:#f9fafb;border-radius:12px;padding:32px;border:1px solid #e5e7eb">
+      <h2 style="color:#064e3b;margin-top:0">Profile Update Submitted</h2>
+      <p>User <strong>{current_user.email}</strong> has updated their profile details.</p>
+      <ul>
+        <li><strong>Name:</strong> {current_user.name}</li>
+        <li><strong>Phone:</strong> {current_user.phone or 'Not provided'}</li>
+      </ul>
+    </div>
+    """
+    threading.Thread(target=send_admin_notification, args=("PQNK: Profile Update Submitted", html_body)).start()
 
     return jsonify({
         "success": True,
@@ -2106,6 +2195,31 @@ def api_repo_serve_file(filename):
     return send_from_directory(UPLOAD_DIR, filename)
 
 
+@app.route("/api/contact", methods=["POST"])
+def api_contact():
+    data = request.get_json()
+    if not data:
+        return jsonify({"success": False, "message": "No data provided"}), 400
+
+    name = data.get("name", "").strip()
+    email = data.get("email", "").strip()
+    message = data.get("message", "").strip()
+
+    if not name or not email or not message:
+        return jsonify({"success": False, "message": "All fields are required"}), 400
+
+    html_body = f"""
+    <div style="font-family:Arial,sans-serif;max-width:480px;margin:auto;background:#f9fafb;border-radius:12px;padding:32px;border:1px solid #e5e7eb">
+      <h2 style="color:#064e3b;margin-top:0">New Contact Us Submission</h2>
+      <p><strong>Name:</strong> {name}</p>
+      <p><strong>Email:</strong> {email}</p>
+      <p><strong>Message:</strong></p>
+      <p style="background:#fff;padding:16px;border-radius:8px;border:1px solid #e5e7eb;">{message}</p>
+    </div>
+    """
+    threading.Thread(target=send_admin_notification, args=(f"PQNK Contact from {name}", html_body)).start()
+
+    return jsonify({"success": True, "message": "Your message has been sent successfully."})
 
 # Make login_required return JSON 401 instead of redirecting for API calls
 

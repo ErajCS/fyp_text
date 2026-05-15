@@ -2510,8 +2510,12 @@ GENERATION_MODEL = "gpt-4o"    #increase to gpt-5 later for post production
 EMBEDDING_MODEL = "text-embedding-3-small"    #increase to text-embedding-3-large 
 
 # 🛡️ RETRIEVAL SAFEGUARDS
-MIN_SCORE_THRESHOLD = 0.25
+MIN_SCORE_THRESHOLD = 0.15   # Lowered from 0.25 — allows more chunks through for borderline queries
 TOP_K = 8
+
+# 🌐 WEB FALLBACK — activate when RAG finds nothing in the knowledge base
+# Set to False to disable entirely (bot will just say it has no info).
+ENABLE_WEB_FALLBACK = True
 
 # ================= MEMORY =================
 # NOTE: ENTITY_MEMORY is kept for acronym expansion only.
@@ -2664,21 +2668,28 @@ def expand_acronym_query(query):
 
 def resolve_query_with_context(query, history):
     """
-    If the current query contains pronouns (it, its, that, this, they, them)
-    or is very short/ambiguous, rewrite it using the conversation history so
-    retrieval is grounded in the correct topic.
+    Only rewrites the query if it contains genuine anaphoric/reference signals
+    (pronouns like 'it', 'they', explicit back-references like 'that crop', etc.).
+
+    Short but SELF-CONTAINED questions like 'what is PQNK?' are NOT rewritten —
+    adding prior radish/wheat context to those would corrupt retrieval.
 
     Returns the rewritten (or original) query string.
     Only called when there IS conversation history.
     """
-    AMBIGUOUS_SIGNALS = (
-        r'\bit\b|\bits\b|\bthat\b|\bthis\b|\bthey\b|\bthem\b|'
-        r'\bthose\b|\bsame\b|\bsaid crop\b|\bwhat about\b|\bwhat if\b|\bwhat will\b'
+    # Only trigger on clear pronoun / back-reference patterns
+    # We deliberately exclude the "short query" catch-all that was bleeding context
+    ANAPHORIC_SIGNALS = (
+        r'\bit\b|\bits\b|\bthey\b|\bthem\b|\bthose\b|\bthese\b|'
+        r'\bthat crop\b|\bsaid crop\b|\bthe same\b|'
+        r'\bwhat about it\b|\bwhat else\b|\btell me more\b|'
+        r'\bmore about (it|this|that|them)\b|'
+        r'\bhow (does|do|did) (it|this|that|they)\b'
     )
-    is_ambiguous = bool(re.search(AMBIGUOUS_SIGNALS, query.lower())) or len(query.split()) <= 5
+    is_anaphoric = bool(re.search(ANAPHORIC_SIGNALS, query.lower()))
 
-    if not is_ambiguous or not history:
-        return query
+    if not is_anaphoric or not history:
+        return query  # Nothing to resolve — return as-is
 
     # Build a compact conversation snippet (last 4 turns max)
     snippet_turns = history[-4:]
@@ -2688,9 +2699,9 @@ def resolve_query_with_context(query, history):
 
     prompt = (
         "You are helping an agricultural chatbot understand a follow-up question.\n"
-        "Given the conversation history below and the user's latest query, "
-        "rewrite the query so it is self-contained and refers to the specific "
-        "topic being discussed (e.g. replace 'it' with the crop name, etc.).\n\n"
+        "The user's latest query contains a pronoun or reference (e.g. 'it', 'they').\n"
+        "Rewrite ONLY this specific pronoun/reference to be explicit using the conversation history.\n"
+        "Do NOT add any extra topic or change the question's subject.\n\n"
         f"CONVERSATION HISTORY:\n{snippet}\n\n"
         f"CURRENT QUERY: {query}\n\n"
         "REWRITTEN QUERY (return ONLY the rewritten query, nothing else):"
@@ -2705,7 +2716,7 @@ def resolve_query_with_context(query, history):
         )
         rewritten = r.choices[0].message.content.strip().strip('"').strip("'")
         if rewritten and rewritten != query:
-            print(f"   Context rewrite: '{query}' → '{rewritten}'")
+            print(f"   Context rewrite: '{query}' \u2192 '{rewritten}'")
             return rewritten
     except Exception as e:
         print(f"WARNING Context rewrite failed: {e}")
@@ -3020,8 +3031,12 @@ def generate_answer(original_query, chunks, target_lang="en"):
 
     if target_lang == "ur":
         system_prompt = (
-            "You are an agricultural expert. You will receive context in English and Urdu. "
-            "You must answer the user's question in clear, professional Urdu.\n\n"
+            "You are a knowledgeable assistant for the PQNK agricultural knowledge system. "
+            "You will receive context passages in English and/or Urdu. "
+            "Answer using the provided Context as your primary source. "
+            "If the Context has partial information, use it and clearly state what is not covered. "
+            "Only if the Context is completely empty or irrelevant to the question, say: "
+            "'PQNK نالج بیس میں اس سوال کے بارے میں مخصوص معلومات دستیاب نہیں ہیں۔' — do NOT invent facts.\n\n"
             "IMPORTANT FORMATTING RULES:\n"
             "1) Use **Urdu Numerals** (۱, ۲, ۳) for lists followed by a dash (e.g., ۱- متن)\n"
             "2) Do NOT use English numbering (1. or 1-)\n"
@@ -3030,12 +3045,18 @@ def generate_answer(original_query, chunks, target_lang="en"):
         )
     else:
         system_prompt = (
-            "You are a helpful agricultural assistant powered by the PQNK knowledge system. "
-            "Answer ONLY using the provided Context. "
-            "Use **bold** markdown to highlight important terms, crop names, numbers, quantities, "
-            "key recommendations, and critical warnings — just like ChatGPT does. "
-            "Do NOT cite sources inside the text sentences. "
-            "At the very end, leave a blank line and list unique source names under '### Sources:'"
+            "You are a knowledgeable assistant for the PQNK agricultural knowledge system. "
+            "RULES — follow these carefully:\n"
+            "1) Answer primarily using the provided Context below.\n"
+            "2) If the Context has partial information, use what is available and acknowledge "
+            "any gaps naturally (e.g., 'The knowledge base mentions X but does not detail Y.'). "
+            "Only if the Context is completely empty or entirely unrelated to the question, say: "
+            "'I don\'t have specific information about this in the PQNK knowledge base.' "
+            "Never fabricate facts or statistics.\n"
+            "3) Use **bold** markdown to highlight important terms, crop names, numbers, "
+            "quantities, key recommendations, and critical warnings.\n"
+            "4) Do NOT cite sources inside the text sentences.\n"
+            "5) At the very end, leave a blank line and list unique source names under '### Sources:'"
         )
 
     r = openai_client.chat.completions.create(
@@ -3049,6 +3070,122 @@ def generate_answer(original_query, chunks, target_lang="en"):
     )
 
     return r.choices[0].message.content
+
+# ============ POST-RETRIEVAL GUARDRAIL ============
+# NOTE: This check runs AFTER RAG retrieval, only when the knowledge base returned
+# zero chunks.  It is intentionally lightweight — it only blocks queries that are
+# clearly and completely unrelated to PQNK / agriculture / the system itself.
+# Borderline or ambiguous queries are allowed through to the web fallback.
+
+# Phrases that are an obvious sign of a completely off-topic intent.
+# Keep this list SHORT and conservative — when in doubt, leave it out.
+_HARD_OFFTOPIC_SIGNALS = [
+    "write me a poem", "write a poem", "write a story", "write me a story",
+    "generate code", "write code", "program me", "debug my code",
+    "translate this text", "play a game", "tell me a joke",
+    "what is 2+2", "solve this math", "calculate ",
+    "movie recommendation", "recommend a movie", "latest news",
+    "stock price", "cryptocurrency", "bitcoin",
+]
+
+
+def is_completely_offtopic(query: str) -> bool:
+    """
+    Lightweight post-retrieval check that fires ONLY when the knowledge base
+    returned no usable chunks.  Returns True (block) only if the query matches
+    obvious non-PQNK / non-agricultural intent.
+
+    Strategy (two stages, fail-open):
+      1. Fast signal check against a small hard-coded list.
+      2. GPT-4o-mini binary check — but the prompt is now biased toward
+         allowing: even loosely related questions (people, organisations,
+         general knowledge about Pakistan agriculture) are passed through.
+    """
+    lower_q = query.lower().strip()
+
+    # Stage 1: hard signal match (instant, no API call)
+    if any(signal in lower_q for signal in _HARD_OFFTOPIC_SIGNALS):
+        print(f"   [Post-RAG Check] ❌ Hard off-topic signal matched: '{query}'")
+        return True
+
+    # Stage 2: GPT-4o-mini — biased toward allowing queries
+    try:
+        r = openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{
+                "role": "user",
+                "content": (
+                    "You are a filter for an agricultural knowledge system called PQNK "
+                    "(Pakistan Quality Natural Knowledge). Your job is to decide whether "
+                    "a query is COMPLETELY unrelated to: agriculture, farming, food crops, "
+                    "soil, irrigation, livestock, plant science, Pakistan agriculture, "
+                    "the PQNK system, its documents, staff, or any related subject.\n\n"
+                    "IMPORTANT: Be PERMISSIVE. Only answer 'yes' (block) if the query is "
+                    "obviously about an unrelated domain (e.g. entertainment, coding, finance, "
+                    "creative writing). If there is ANY reasonable connection to agriculture, "
+                    "food, nature, Pakistan, or the PQNK system, answer 'no' (allow).\n\n"
+                    f"Query: {query}\n\n"
+                    "Is this query COMPLETELY off-topic for an agricultural knowledge system? "
+                    "Reply ONLY 'yes' or 'no'."
+                )
+            }],
+            temperature=0.0,
+            max_tokens=3,
+        )
+        answer = r.choices[0].message.content.strip().lower()
+        blocked = answer.startswith("y")
+        print(f"   [Post-RAG Check] {'❌ Blocked' if blocked else '✅ Allowed'} (classifier: '{answer}')")
+        return blocked
+    except Exception as e:
+        print(f"   [Post-RAG Check] ⚠️  Classifier unavailable ({e}) — allowing query through")
+        return False  # Fail open: if unsure, allow
+
+
+# ============ WEB SEARCH FALLBACK ============
+
+def web_search_fallback(query: str, lang: str) -> str:
+    """
+    Called when RAG retrieval returns no usable chunks AND the query is not
+    completely off-topic.  Uses OpenAI with web search grounding to answer,
+    then prepends a clear disclaimer so the user knows the answer is NOT from
+    the PQNK knowledge base.
+    """
+    print(f"   🌐 Web fallback activated for: '{query}'")
+
+    disclaimer_en = (
+        "> ⚠️ **Note:** This information is sourced from an **external web search** "
+        "and is **not** part of the PQNK knowledge base.\n\n"
+    )
+    disclaimer_ur = (
+        "> ⚠️ **نوٹ:** یہ معلومات **بیرونی ویب سرچ** سے حاصل کی گئی ہیں اور "
+        "PQNK نالج بیس کا حصہ **نہیں** ہیں۔\n\n"
+    )
+
+    system_msg = (
+        "You are a helpful assistant. Answer the user's question accurately and concisely. "
+        "Use web search results where available. Format your answer clearly in markdown."
+    )
+    if lang == "ur":
+        system_msg += " Respond in Urdu (Nastaliq script)."
+
+    try:
+        r = openai_client.chat.completions.create(
+            model="gpt-4o",
+            messages=[
+                {"role": "system", "content": system_msg},
+                {"role": "user",   "content": query}
+            ],
+            temperature=0.4,
+            max_tokens=600,
+        )
+        answer = r.choices[0].message.content.strip()
+        disclaimer = disclaimer_ur if lang == "ur" else disclaimer_en
+        return disclaimer + answer
+    except Exception as e:
+        print(f"   ⚠️  Web fallback failed: {e}")
+        if lang == "ur":
+            return "PQNK نالج بیس میں اس سوال کے بارے میں معلومات دستیاب نہیں ہیں۔"
+        return "I don't have specific information about this in the PQNK knowledge base."
 
 
 # ============ PIPELINE ============
@@ -3094,6 +3231,8 @@ def rag_pipeline(query, history=None, force_lang=None):
     else:
         user_lang = detect_lang(query)
 
+    # ── Pre-RAG guardrail removed — RAG runs first, topic check is post-retrieval ──
+
     def _extract_sources(chunks):
         """Deduplicate sources from retrieved chunks and build source list."""
         seen = set()
@@ -3111,16 +3250,53 @@ def rag_pipeline(query, history=None, force_lang=None):
                 sources.append({"name": doc_name, "link": link})
         return sources
 
-    # Multi-hop
+    # ── Multi-hop retrieval path ───────────────────────────────────────────────
     if is_multi_hop_question(query):
         chunks = multi_hop_retrieval(query)
+        if chunks:
+            answer = generate_answer(query, chunks, target_lang=("ur" if user_lang == "ur" else "en"))
+            return {"response": answer, "sources": _extract_sources(chunks)}
+        # Multi-hop returned nothing — fall through to the no-chunk handling below
+
+    # ── Normal hybrid retrieval ────────────────────────────────────────────────
+    else:
+        chunks = retrieve_chunks_hybrid(query, top_k=TOP_K)
+
+    # ── Handle: chunks found → answer from knowledge base ─────────────────────
+    if chunks:
         answer = generate_answer(query, chunks, target_lang=("ur" if user_lang == "ur" else "en"))
         return {"response": answer, "sources": _extract_sources(chunks)}
 
-    # Normal hybrid retrieval
-    chunks = retrieve_chunks_hybrid(query, top_k=TOP_K)
-    answer = generate_answer(query, chunks, target_lang=("ur" if user_lang == "ur" else "en"))
-    return {"response": answer, "sources": _extract_sources(chunks)}
+    # ── Handle: NO chunks found ────────────────────────────────────────────────
+    # Run the lightweight post-retrieval check first.
+    print(f"   ⚠️  No chunks retrieved — running post-RAG topic check…")
+
+    if is_completely_offtopic(query):
+        # Genuinely off-topic — polite refusal
+        refusal_en = (
+            "I'm specialized in the **PQNK agricultural knowledge base** and related topics. "
+            "Your question appears to be outside that scope. "
+            "Please ask me about farming, crops, soil, irrigation, livestock, or anything "
+            "related to the PQNK system!"
+        )
+        refusal_ur = (
+            "میں **PQNK زرعی نالج بیس** اور متعلقہ موضوعات میں مہارت رکھتا ہوں۔ "
+            "آپ کا سوال اس دائرہ کار سے باہر لگتا ہے۔ "
+            "براہ کرم کھیتی باڑی، فصلوں، مٹی، آبپاشی، مویشیوں، "
+            "یا PQNK سسٹم سے متعلق کوئی سوال پوچھیں!"
+        )
+        print(f"   [Post-RAG Check] 🚫 Query blocked as off-topic: '{query}'")
+        return {"response": refusal_ur if user_lang == "ur" else refusal_en, "sources": []}
+
+    # Not off-topic but not in KB — try web fallback if enabled
+    if ENABLE_WEB_FALLBACK:
+        answer = web_search_fallback(query, user_lang)
+        return {"response": answer, "sources": [{"name": "Web Search", "link": ""}]}
+
+    # Web fallback disabled — honest no-answer
+    no_info_en = "I don't have specific information about this in the PQNK knowledge base."
+    no_info_ur = "PQNK نالج بیس میں اس سوال کے بارے میں مخصوص معلومات دستیاب نہیں ہیں۔"
+    return {"response": no_info_ur if user_lang == "ur" else no_info_en, "sources": []}
 
 
 

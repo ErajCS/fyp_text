@@ -1,0 +1,12 @@
+Category,Item,Description,Estimated Monthly Cost (USD),Estimated Monthly Cost (PKR),One-Time Deployment Cost (PKR)
+Infrastructure,Frontend Hosting,Vercel/Netlify Free Tier (Perfect for small scale),0,0,0
+Infrastructure,Backend Hosting,VPS (e.g. DigitalOcean/Hetzner 2GB RAM) for Flask + Whisper,12,3360,10000
+Infrastructure,Relational Database,Supabase / Neon Postgres (Generous Free Tier),0,0,0
+Infrastructure,Vector Database,Qdrant Cloud Free Tier (1GB capacity is sufficient),0,0,0
+API Services,LLM Generation,OpenAI GPT-5 (Estimated 3K queries/mo),37.5,10425,0
+API Services,Embeddings,OpenAI text-embedding-3-small,$0.50 ,140,0
+API Services,TTS Engine,Azure Neural TTS Free Tier / Edge TTS,0,0,0
+API Services,Authentication,Twilio SMS OTP (Reduced to essential SMS limits),23,"6,500",0
+Miscellaneous,Domain Name,.com Domain Registration ($15/yr amortized),1.25,350,4200
+Miscellaneous,File Storage,Google Drive standard free tier (15GB),0,0,0
+TOTAL,Total Operational Costs,Monthly & Deployment Totals,74.25,20775,14200

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useLanguage, TRANSLATIONS } from "../context/LanguageContext";
 
 export default function Login() {
     const navigate = useNavigate();
@@ -7,6 +8,9 @@ export default function Login() {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    
+    const { lang, toggleLang } = useLanguage();
+    const t = TRANSLATIONS[lang];
 
     const handleChange = (e) => {
         setError("");
@@ -131,20 +135,20 @@ export default function Login() {
                                 <h2 className="text-lg font-bold text-green-800">AgriChat</h2>
                             </div>
 
-                            <h3 className="text-2xl font-bold text-gray-800 mb-1">Welcome back</h3>
-                            <p className="text-gray-500 text-sm mb-8">Sign in to continue to your dashboard</p>
+                            <h3 className="text-2xl font-bold text-gray-800 mb-1">{t.authWelcomeBack}</h3>
+                            <p className="text-gray-500 text-sm mb-8">{t.authSignInDesc}</p>
 
                             <form onSubmit={handleSubmit} className="space-y-5">
                                 {/* Email */}
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1.5">{t.authEmailLabel}</label>
                                     <input
                                         type="email"
                                         name="email"
                                         value={formData.email}
                                         onChange={handleChange}
                                         required
-                                        placeholder="you@example.com"
+                                        placeholder={t.authEmailPlaceholder}
                                         className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-400 text-sm transition"
                                     />
                                 </div>
@@ -152,9 +156,9 @@ export default function Login() {
                                 {/* Password */}
                                 <div>
                                     <div className="flex justify-between items-center mb-1.5">
-                                        <label className="text-sm font-medium text-gray-700">Password</label>
+                                        <label className="text-sm font-medium text-gray-700">{t.authPasswordLabel}</label>
                                         <Link to="/forgot-password" className="text-xs text-green-600 hover:text-green-700 font-medium transition">
-                                            Forgot password?
+                                            {t.authForgotPassword}
                                         </Link>
                                     </div>
                                     <div className="relative">
@@ -180,7 +184,7 @@ export default function Login() {
                                 {/* Remember me */}
                                 <div className="flex items-center gap-2">
                                     <input type="checkbox" id="remember" className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500" />
-                                    <label htmlFor="remember" className="text-sm text-gray-600">Remember me</label>
+                                    <label htmlFor="remember" className="text-sm text-gray-600">{t.authRememberMe}</label>
                                 </div>
 
                                 {/* Submit */}
@@ -192,27 +196,30 @@ export default function Login() {
                                         : "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-400 hover:to-emerald-500 hover:shadow-green-500/30 hover:scale-[1.01]"
                                         }`}
                                 >
-                                    {loading ? "Signing in…" : "Sign In"}
+                                    {loading ? t.authSigningIn : t.authSignInBtn}
                                 </button>
                             </form>
 
                             {/* Divider */}
                             <div className="flex items-center gap-3 my-6">
                                 <div className="flex-1 h-px bg-gray-200" />
-                                <span className="text-xs text-gray-400 uppercase tracking-wider">or</span>
+                                <span className="text-xs text-gray-400 uppercase tracking-wider">{t.authOr}</span>
                                 <div className="flex-1 h-px bg-gray-200" />
                             </div>
 
                             {/* Urdu toggle */}
-                            <button className="w-full py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition flex items-center justify-center gap-2">
-                                🌐 Switch to Urdu (اردو)
+                            <button 
+                                onClick={toggleLang}
+                                className="w-full py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition flex items-center justify-center gap-2"
+                            >
+                                🌐 {lang === "en" ? "Switch to Urdu (اردو)" : "Switch to English"}
                             </button>
 
                             {/* Sign up link */}
                             <p className="text-center text-sm text-gray-500 mt-6">
-                                Don't have an account?{" "}
+                                {t.authNoAccount}{" "}
                                 <Link to="/signup" className="text-green-600 font-semibold hover:text-green-700 transition">
-                                    Create Account
+                                    {t.authCreateAccount}
                                 </Link>
                             </p>
                         </div>
