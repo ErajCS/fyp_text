@@ -841,16 +841,22 @@ export default function Chatbot() {
               </div>
             )}
 
-            {messages.map((msg, index) => (
-              <MessageBubble
-                key={index}
-                msg={msg}
-                index={index}
-                copiedId={copiedId}
-                onCopy={copy}
-                isStreaming={typing && index === messages.length - 1 && msg.role === "assistant"}
-              />
-            ))}
+            {messages.map((msg, index) => {
+              // Hide the empty bubble if we are currently showing the typing dots
+              if (typing && index === messages.length - 1 && msg.role === "assistant" && msg.content === "") {
+                return null;
+              }
+              return (
+                <MessageBubble
+                  key={index}
+                  msg={msg}
+                  index={index}
+                  copiedId={copiedId}
+                  onCopy={copy}
+                  isStreaming={typing && index === messages.length - 1 && msg.role === "assistant"}
+                />
+              );
+            })}
 
             {typing && messages[messages.length - 1]?.content === "" && (
               <div className="flex items-end gap-3" style={{ animation: "chatFadeIn 0.3s ease-out" }}>

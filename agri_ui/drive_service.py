@@ -114,7 +114,7 @@ def _get_folder_id(parent_id: str, folder_name: str) -> str:
             fields="files(id)",
             supportsAllDrives=True,
             includeItemsFromAllDrives=True
-        ).execute()
+        ).execute(num_retries=3)
         files = results.get("files", [])
         if files:
             return files[0]["id"]
@@ -129,7 +129,7 @@ def _get_folder_id(parent_id: str, folder_name: str) -> str:
             body=meta, 
             fields="id",
             supportsAllDrives=True
-        ).execute()
+        ).execute(num_retries=3)
         return folder.get("id")
     except Exception as exc:
         logger.error(f"Error getting/creating folder {folder_name}: {exc}")
@@ -168,7 +168,7 @@ def upload_file(local_path: str, filename: str, mime_type: str = "application/oc
             media_body=media, 
             fields="id, webViewLink",
             supportsAllDrives=True
-        ).execute()
+        ).execute(num_retries=3)
 
         file_id   = result.get("id", "")
         view_link = result.get("webViewLink", "")
@@ -178,7 +178,7 @@ def upload_file(local_path: str, filename: str, mime_type: str = "application/oc
                 fileId=file_id,
                 body={"type": "anyone", "role": "reader"},
                 supportsAllDrives=True
-            ).execute()
+            ).execute(num_retries=3)
             if not view_link:
                 view_link = f"https://drive.google.com/file/d/{file_id}/view"
 
@@ -206,7 +206,7 @@ def list_folder_contents(folder_id: str):
             fields="files(id, name, mimeType, webViewLink)",
             supportsAllDrives=True,
             includeItemsFromAllDrives=True
-        ).execute()
+        ).execute(num_retries=3)
         return results.get("files", [])
     except Exception as exc:
         logger.error(f"Drive list failed for {folder_id}: {exc}")
@@ -252,7 +252,7 @@ def list_all_files_recursive(folder_id: str = None) -> list:
                 )
                 if page_token:
                     kwargs["pageToken"] = page_token
-                resp = drive.files().list(**kwargs).execute()
+                resp = drive.files().list(**kwargs).execute(num_retries=3)
                 for item in resp.get("files", []):
                     if item["mimeType"] == "application/vnd.google-apps.folder":
                         # Recurse into the subfolder, passing its name as the
@@ -283,7 +283,7 @@ def delete_file(file_id: str) -> bool:
         drive.files().delete(
             fileId=file_id,
             supportsAllDrives=True
-        ).execute()
+        ).execute(num_retries=3)
         logger.info(f"Drive delete OK: {file_id}")
         return True
     except Exception as exc:
